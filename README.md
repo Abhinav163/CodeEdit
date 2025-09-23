@@ -121,8 +121,3 @@ A brief overview of the available API routes.
 - **Add More Languages**: Extend support for languages like Java, Go, or C#.
 - **Shareable Snippets**: Implement the public sharing feature for saved snippets.
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
