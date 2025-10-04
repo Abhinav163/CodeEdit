@@ -138,52 +138,59 @@ const Profile = () => {
         {snippets.map((snippet) => {
           const langInfo = languageMap[snippet.language] || {};
           return (
-            <Card
-              key={snippet._id}
-              bg="gray.800"
-              boxShadow="lg"
-              _hover={{ transform: "translateY(-5px)", boxShadow: "xl" }}
-              transition="all 0.2s"
-            >
-              <CardHeader>
-                <Flex align="center" justify="space-between">
-                  <Heading size="md">{snippet.title}</Heading>
-                  <Icon as={langInfo.icon} color={langInfo.color} boxSize={6} />
-                </Flex>
-              </CardHeader>
-              <CardBody>
-                <Text
-                  noOfLines={3}
-                  color="gray.400"
-                  bg="gray.900"
-                  p={3}
-                  borderRadius="md"
-                  fontFamily="mono"
-                >
-                  {snippet.code}
-                </Text>
-              </CardBody>
-              <CardFooter>
-                <ButtonGroup spacing="2">
-                  <Button
-                    as={RouterLink}
-                    to={`/`}
-                    state={{ code: snippet.code, language: snippet.language }}
-                    variant="solid"
-                    colorScheme="blue"
+            <Box className="animated-border-box" key={snippet._id}>
+              <Card
+                key={snippet._id}
+                bg="gray.800"
+                boxShadow="lg"
+                _hover={{ transform: "translateY(-5px)", boxShadow: "xl" }}
+                transition="all 0.2s"
+                className="glass-card"
+              >
+                <CardHeader>
+                  <Flex align="center" justify="space-between">
+                    <Heading size="md">{snippet.title}</Heading>
+                    <Icon
+                      as={langInfo.icon}
+                      color={langInfo.color}
+                      boxSize={6}
+                    />
+                  </Flex>
+                </CardHeader>
+                <CardBody>
+                  <Text
+                    noOfLines={3}
+                    color="gray.400"
+                    bg="gray.900"
+                    p={3}
+                    borderRadius="md"
+                    fontFamily="mono"
                   >
-                    Open
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    colorScheme="red"
-                    onClick={() => openDeleteDialog(snippet._id)}
-                  >
-                    Delete
-                  </Button>
-                </ButtonGroup>
-              </CardFooter>
-            </Card>
+                    {snippet.code}
+                  </Text>
+                </CardBody>
+                <CardFooter>
+                  <ButtonGroup spacing="2">
+                    <Button
+                      as={RouterLink}
+                      to={`/`}
+                      state={{ code: snippet.code, language: snippet.language }}
+                      variant="solid"
+                      colorScheme="blue"
+                    >
+                      Open
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => openDeleteDialog(snippet._id)}
+                    >
+                      Delete
+                    </Button>
+                  </ButtonGroup>
+                </CardFooter>
+              </Card>
+            </Box>
           );
         })}
       </SimpleGrid>

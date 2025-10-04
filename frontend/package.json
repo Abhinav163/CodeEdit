@@ -12,6 +12,7 @@
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@uiw/codemirror-theme-okaidia": "^4.22.0",
+    "@uiw/codemirror-theme-tokyo-night": "^4.25.2",
     "@uiw/react-codemirror": "^4.22.0",
     "axios": "^1.7.2",
     "framer-motion": "^6.5.1",
