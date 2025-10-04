@@ -44,7 +44,7 @@ const Navbar = () => {
           letterSpacing={"-.1rem"}
           _hover={{ textDecoration: "none" }}
         >
-          Code Editor
+          Code - Edit
         </Heading>
       </Flex>
       <Box>
