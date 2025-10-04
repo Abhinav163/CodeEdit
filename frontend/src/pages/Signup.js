@@ -33,7 +33,7 @@ const Signup = () => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        "https://codeedit-backend.onrender.com/api/auth/register",
         formData
       );
       localStorage.setItem("token", res.data.token);

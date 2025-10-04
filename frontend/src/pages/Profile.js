@@ -46,9 +46,12 @@ const Profile = () => {
     const fetchSnippets = async () => {
       const token = localStorage.getItem("token");
       try {
-        const res = await axios.get("http://localhost:5000/api/snippets/user", {
-          headers: { "x-auth-token": token },
-        });
+        const res = await axios.get(
+          "https://codeedit-backend.onrender.com/api/snippets/user",
+          {
+            headers: { "x-auth-token": token },
+          }
+        );
         setSnippets(res.data);
       } catch (err) {
         toast({
@@ -72,7 +75,7 @@ const Profile = () => {
     const token = localStorage.getItem("token");
     try {
       await axios.delete(
-        `http://localhost:5000/api/snippets/${snippetToDelete}`,
+        `https://codeedit-backend.onrender.com/api/snippets/${snippetToDelete}`,
         {
           headers: { "x-auth-token": token },
         }
