@@ -27,7 +27,6 @@ import axios from "axios";
 import { Link as RouterLink } from "react-router-dom";
 import { SiCplusplus, SiPython, SiJavascript } from "react-icons/si";
 
-// Helper to map languages to icons and colors
 const languageMap = {
   cpp: { icon: SiCplusplus, color: "blue.400" },
   python: { icon: SiPython, color: "yellow.400" },
@@ -70,16 +69,35 @@ const Profile = () => {
     onOpen();
   };
 
-  const handleShare = (snippetId) => {
-    const url = `${window.location.origin}/editor/${snippetId}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Link Copied!",
-      description: "link has been copied to your clipboard.",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
+  const handleShare = async (snippetId) => {
+    const token = localStorage.getItem("token");
+    try {
+      // Make the snippet public before sharing
+      await axios.patch(
+        `https://codeedit-backend.onrender.com/api/snippets/${snippetId}/share`,
+        {},
+        { headers: { "x-auth-token": token } }
+      );
+
+      const url = `${window.location.origin}/editor/${snippetId}`;
+      navigator.clipboard.writeText(url);
+
+      toast({
+        title: "Link Copied!",
+        description: "Collaboration link has been copied to your clipboard.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err) {
+      toast({
+        title: "Sharing Error",
+        description: "Could not make the snippet public for sharing.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleDelete = async () => {
@@ -182,7 +200,7 @@ const Profile = () => {
                   <ButtonGroup spacing="2">
                     <Button
                       as={RouterLink}
-                      to={`/editor/${snippet._id}`} // Corrected link
+                      to={`/editor/${snippet._id}`}
                       variant="solid"
                       colorScheme="teal"
                     >

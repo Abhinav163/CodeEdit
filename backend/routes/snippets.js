@@ -39,7 +39,6 @@ router.get("/user", auth, async (req, res) => {
 // @route   GET /api/snippets/:id
 // @desc    Get a single snippet by ID (public or owned by the user)
 router.get("/:id", auth, async (req, res) => {
-  // Added auth middleware
   try {
     const snippet = await Snippet.findById(req.params.id);
 
@@ -55,6 +54,32 @@ router.get("/:id", auth, async (req, res) => {
     }
 
     res.json(snippet);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+// @route   PATCH /api/snippets/:id/share
+// @desc    Make a snippet public for sharing
+router.patch("/:id/share", auth, async (req, res) => {
+  try {
+    let snippet = await Snippet.findById(req.params.id);
+
+    if (!snippet) {
+      return res.status(404).json({ msg: "Snippet not found" });
+    }
+
+    // Make sure the user owns the snippet
+    if (snippet.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: "Not authorized" });
+    }
+
+    // Set the snippet to public and save
+    snippet.isPublic = true;
+    await snippet.save();
+
+    res.json({ msg: "Snippet is now public and shareable" });
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
