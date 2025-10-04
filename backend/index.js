@@ -24,7 +24,7 @@ const server = http.createServer(app); // 3. Create an HTTP server from the Expr
 // 4. Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: "*", // Allow all origins for simplicity, restrict in production
+    origin: "https://codeedit-frontend.onrender.com", // Allow all origins for simplicity, restrict in production
     methods: ["GET", "POST"],
   },
 });
