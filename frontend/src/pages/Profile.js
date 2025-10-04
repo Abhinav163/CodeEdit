@@ -70,8 +70,19 @@ const Profile = () => {
     onOpen();
   };
 
+  const handleShare = (snippetId) => {
+    const url = `${window.location.origin}/editor/${snippetId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link Copied!",
+      description: "link has been copied to your clipboard.",
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
   const handleDelete = async () => {
-    // ... same handleDelete logic as before
     const token = localStorage.getItem("token");
     try {
       await axios.delete(
@@ -105,7 +116,6 @@ const Profile = () => {
     );
   }
 
-  // Professional "Empty State"
   if (snippets.length === 0) {
     return (
       <Flex
@@ -140,7 +150,6 @@ const Profile = () => {
           return (
             <Box className="animated-border-box" key={snippet._id}>
               <Card
-                key={snippet._id}
                 bg="gray.800"
                 boxShadow="lg"
                 _hover={{ transform: "translateY(-5px)", boxShadow: "xl" }}
@@ -173,12 +182,18 @@ const Profile = () => {
                   <ButtonGroup spacing="2">
                     <Button
                       as={RouterLink}
-                      to={`/`}
-                      state={{ code: snippet.code, language: snippet.language }}
+                      to={`/editor/${snippet._id}`} // Corrected link
                       variant="solid"
-                      colorScheme="blue"
+                      colorScheme="teal"
                     >
                       Open
+                    </Button>
+                    <Button
+                      variant="solid"
+                      colorScheme="blue"
+                      onClick={() => handleShare(snippet._id)}
+                    >
+                      Share
                     </Button>
                     <Button
                       variant="ghost"
@@ -195,7 +210,6 @@ const Profile = () => {
         })}
       </SimpleGrid>
 
-      {/* Confirmation Dialog (same as before) */}
       <AlertDialog
         isOpen={isOpen}
         leastDestructiveRef={cancelRef}

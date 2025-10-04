@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"; // Import useEffect
+import React, { useEffect } from "react";
 import {
   Routes,
   Route,
@@ -115,19 +115,15 @@ function App() {
       localStorage.setItem("lastActivity", Date.now().toString());
     };
 
-    // Check for inactivity when the component mounts
     checkInactivity();
 
-    // Add event listeners for user activity
     window.addEventListener("mousemove", updateActivityTimestamp);
     window.addEventListener("keydown", updateActivityTimestamp);
     window.addEventListener("scroll", updateActivityTimestamp);
     window.addEventListener("click", updateActivityTimestamp);
 
-    // Set up an interval to periodically check for inactivity
-    const intervalId = setInterval(checkInactivity, 15000); // Check every 15 seconds
+    const intervalId = setInterval(checkInactivity, 15000);
 
-    // Cleanup function to remove listeners and interval
     return () => {
       clearInterval(intervalId);
       window.removeEventListener("mousemove", updateActivityTimestamp);
@@ -146,6 +142,14 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route
             path="/"
+            element={
+              <PrivateRoute>
+                <Editor />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/editor/:id"
             element={
               <PrivateRoute>
                 <Editor />

@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import io from "socket.io-client";
 import axios from "axios";
 import CodeMirror from "@uiw/react-codemirror";
-import { cpp } from "@codemirror/lang-cpp";
+import { cpp, cppLanguage } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
 import { javascript } from "@codemirror/lang-javascript";
 import { tokyoNight } from "@uiw/codemirror-theme-tokyo-night";
@@ -31,7 +32,6 @@ import {
 } from "@chakra-ui/react";
 import { FaTrash } from "react-icons/fa";
 
-// Manually define a list of common C++ keywords
 const cppKeywords = [
   "alignas",
   "alignof",
@@ -138,9 +138,11 @@ const cppKeywords = [
 ].map((k) => ({ label: k, type: "keyword" }));
 
 const Editor = () => {
+  const { id: snippetId } = useParams();
   const location = useLocation();
+  const socketRef = useRef(null);
+  const isRemoteChange = useRef(false);
 
-  // 1. Initialize state from localStorage or use defaults
   const [language, setLanguage] = useState(
     localStorage.getItem("editorLanguage") || "cpp"
   );
@@ -159,18 +161,57 @@ const Editor = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
-  // 2. Save to localStorage whenever code, language, or input changes
   useEffect(() => {
-    localStorage.setItem("editorCode", code);
-  }, [code]);
+    socketRef.current = io("https://codeedit-backend.onrender.com");
+    const socket = socketRef.current;
+
+    if (snippetId) {
+      socket.emit("join-room", snippetId);
+
+      const fetchSnippet = async () => {
+        const token = localStorage.getItem("token");
+        try {
+          const res = await axios.get(
+            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
+            { headers: { "x-auth-token": token } }
+          );
+          isRemoteChange.current = true;
+          setCode(res.data.code);
+          setLanguage(res.data.language);
+        } catch (err) {
+          toast({ title: "Error fetching snippet", status: "error" });
+        }
+      };
+      fetchSnippet();
+    }
+
+    socket.on("code-update", (newCode) => {
+      isRemoteChange.current = true;
+      setCode(newCode);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [snippetId, toast]);
 
   useEffect(() => {
-    localStorage.setItem("editorLanguage", language);
-  }, [language]);
+    if (!snippetId) {
+      localStorage.setItem("editorCode", code);
+    }
+  }, [code, snippetId]);
 
   useEffect(() => {
-    localStorage.setItem("editorInput", input);
-  }, [input]);
+    if (!snippetId) {
+      localStorage.setItem("editorLanguage", language);
+    }
+  }, [language, snippetId]);
+
+  useEffect(() => {
+    if (!snippetId) {
+      localStorage.setItem("editorInput", input);
+    }
+  }, [input, snippetId]);
 
   useEffect(() => {
     if (location.state && location.state.code && location.state.language) {
@@ -179,7 +220,6 @@ const Editor = () => {
     }
   }, [location.state]);
 
-  // Typing effect for output
   useEffect(() => {
     if (isLoading || !output) {
       setDisplayedOutput("");
@@ -204,9 +244,22 @@ const Editor = () => {
     javascript: [javascript({ jsx: true }), autocompletion()],
   };
 
-  const onChange = useCallback((value) => {
-    setCode(value);
-  }, []);
+  const onChange = useCallback(
+    (value) => {
+      if (isRemoteChange.current) {
+        isRemoteChange.current = false;
+        return;
+      }
+      setCode(value);
+      if (socketRef.current && snippetId) {
+        socketRef.current.emit("code-change", {
+          roomId: snippetId,
+          newCode: value,
+        });
+      }
+    },
+    [snippetId]
+  );
 
   const handleRun = async () => {
     setIsLoading(true);

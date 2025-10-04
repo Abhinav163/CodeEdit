@@ -1,11 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
-const { spawn } = require("child_process"); // Change exec to spawn
+const { spawn } = require("child_process");
+const http = require("http"); // 1. Import http
+const { Server } = require("socket.io"); // 2. Import socket.io Server
 require("dotenv").config();
 
 // Middleware for authentication
@@ -18,66 +19,45 @@ mongoose
   .catch((err) => console.log(err));
 
 const app = express();
+const server = http.createServer(app); // 3. Create an HTTP server from the Express app
+
+// 4. Initialize Socket.IO with CORS configuration
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for simplicity, restrict in production
+    methods: ["GET", "POST"],
+  },
+});
 
 // Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
 // --- API Routes ---
-// Auth Routes (Login/Register)
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/snippets", require("./routes/snippets"));
-// Code Execution Route (Protected)
-// app.post("/run", auth, (req, res) => {
-//   const { language = "javascript", code } = req.body;
 
-//   if (code === undefined || code.trim() === "") {
-//     return res.status(400).json({ error: "Code is empty." });
-//   }
+// --- WebSocket Connection Logic ---
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
 
-//   const tempDir = path.join(__dirname, "temp");
-//   if (!fs.existsSync(tempDir)) {
-//     fs.mkdirSync(tempDir, { recursive: true });
-//   }
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined room ${roomId}`);
+  });
 
-//   let command;
-//   let filePath;
-//   let outPath;
+  socket.on("code-change", (data) => {
+    const { roomId, newCode } = data;
+    // Broadcast to everyone else in the room except the sender
+    socket.to(roomId).emit("code-update", newCode);
+  });
 
-//   if (language === "javascript") {
-//     filePath = path.join(tempDir, "script.js");
-//     fs.writeFileSync(filePath, code);
-//     command = `node "${filePath}"`; // Fix for spaces
-//   } else if (language === "python") {
-//     filePath = path.join(tempDir, "script.py");
-//     fs.writeFileSync(filePath, code);
-//     command = `python "${filePath}"`; // Fix for spaces
-//   } else if (language === "cpp") {
-//     filePath = path.join(tempDir, "script.cpp");
-//     outPath = path.join(tempDir, "a.out");
-//     fs.writeFileSync(filePath, code);
-//     command = `g++ "${filePath}" -o "${outPath}" && "${outPath}"`; // Fix for spaces
-//   } else {
-//     return res.status(400).json({ error: "Unsupported language" });
-//   }
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
 
-//   exec(command, (error, stdout, stderr) => {
-//     if (error) {
-//       res.json({ output: stderr || error.message });
-//     } else {
-//       res.json({ output: stdout || stderr });
-//     }
-
-//     // Cleanup with delay to prevent EPERM error on Windows
-//     setTimeout(() => {
-//       if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-//       if (outPath && fs.existsSync(outPath)) fs.unlinkSync(outPath);
-//     }, 100);
-//   });
-// });
-
-// ... inside your file
-
+// (Your existing /run route remains here)
 app.post("/run", auth, (req, res) => {
   const { language = "javascript", code, input = "" } = req.body;
 
@@ -94,10 +74,8 @@ app.post("/run", auth, (req, res) => {
   const filePath = path.join(tempDir, `script.${language}`);
   fs.writeFileSync(filePath, code);
 
-  // --- C++ Execution Logic ---
   if (language === "cpp") {
     const outPath = path.join(tempDir, "a.out");
-    // 1. Compile the code
     const compile = spawn("g++", [filePath, "-o", outPath]);
     let compileError = "";
     compile.stderr.on("data", (data) => {
@@ -105,14 +83,13 @@ app.post("/run", auth, (req, res) => {
     });
     compile.on("close", (code) => {
       if (code !== 0) {
-        fs.unlinkSync(filePath); // Clean up cpp file
+        fs.unlinkSync(filePath);
         return res.json({ output: compileError });
       }
-      // 2. Run the compiled executable
       const run = spawn(outPath);
       let output = "";
       let runError = "";
-      run.stdin.write(input); // Pipe input to the process
+      run.stdin.write(input);
       run.stdin.end();
       run.stdout.on("data", (data) => {
         output += data.toString();
@@ -121,22 +98,20 @@ app.post("/run", auth, (req, res) => {
         runError += data.toString();
       });
       run.on("close", () => {
-        fs.unlinkSync(filePath); // Clean up cpp file
-        fs.unlinkSync(outPath); // Clean up executable
+        fs.unlinkSync(filePath);
+        fs.unlinkSync(outPath);
         res.json({ output: runError || output });
       });
     });
     return;
   }
 
-  // --- Python & JavaScript Execution Logic ---
   const command = language === "python" ? "python" : "node";
   process = spawn(command, [filePath]);
 
   let output = "";
   let error = "";
 
-  // Pipe the input string to the process's stdin
   process.stdin.write(input);
   process.stdin.end();
 
@@ -149,11 +124,13 @@ app.post("/run", auth, (req, res) => {
   });
 
   process.on("close", (code) => {
-    fs.unlinkSync(filePath); // Clean up the script file
+    fs.unlinkSync(filePath);
     res.json({ output: error || output });
   });
 });
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// 5. Start the http server instead of the Express app
+server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
