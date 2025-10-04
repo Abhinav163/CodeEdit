@@ -37,15 +37,23 @@ router.get("/user", auth, async (req, res) => {
 });
 
 // @route   GET /api/snippets/:id
-// @desc    Get a single public snippet by ID
-router.get("/:id", async (req, res) => {
+// @desc    Get a single snippet by ID (public or owned by the user)
+router.get("/:id", auth, async (req, res) => {
+  // Added auth middleware
   try {
     const snippet = await Snippet.findById(req.params.id);
-    if (!snippet || !snippet.isPublic) {
-      return res
-        .status(404)
-        .json({ msg: "Snippet not found or is not public" });
+
+    if (!snippet) {
+      return res.status(404).json({ msg: "Snippet not found" });
     }
+
+    // Check if the snippet is public OR if the user owns it
+    if (!snippet.isPublic && snippet.user.toString() !== req.user.id) {
+      return res
+        .status(401)
+        .json({ msg: "Not authorized to view this snippet" });
+    }
+
     res.json(snippet);
   } catch (err) {
     console.error(err.message);
@@ -61,7 +69,6 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Snippet not found" });
     }
 
-    // Make sure the user owns the snippet
     if (snippet.user.toString() !== req.user.id) {
       return res.status(401).json({ msg: "Not authorized" });
     }
@@ -74,7 +81,5 @@ router.delete("/:id", auth, async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-// (Optional) Add PUT for updating and DELETE for deleting snippets here
 
 module.exports = router;
