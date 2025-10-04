@@ -6,6 +6,7 @@ import { cpp } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
 import { javascript } from "@codemirror/lang-javascript";
 import { tokyoNight } from "@uiw/codemirror-theme-tokyo-night";
+import { autocompletion, completeFromList } from "@codemirror/autocomplete";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   Box,
@@ -30,21 +31,146 @@ import {
 } from "@chakra-ui/react";
 import { FaTrash } from "react-icons/fa";
 
+// Manually define a list of common C++ keywords
+const cppKeywords = [
+  "alignas",
+  "alignof",
+  "and",
+  "and_eq",
+  "asm",
+  "auto",
+  "bitand",
+  "bitor",
+  "bool",
+  "break",
+  "case",
+  "catch",
+  "char",
+  "char8_t",
+  "char16_t",
+  "char32_t",
+  "class",
+  "compl",
+  "concept",
+  "const",
+  "consteval",
+  "constexpr",
+  "constinit",
+  "const_cast",
+  "continue",
+  "co_await",
+  "co_return",
+  "co_yield",
+  "decltype",
+  "default",
+  "delete",
+  "do",
+  "double",
+  "dynamic_cast",
+  "else",
+  "enum",
+  "explicit",
+  "export",
+  "extern",
+  "false",
+  "float",
+  "for",
+  "friend",
+  "goto",
+  "if",
+  "inline",
+  "int",
+  "long",
+  "mutable",
+  "namespace",
+  "new",
+  "noexcept",
+  "not",
+  "not_eq",
+  "nullptr",
+  "operator",
+  "or",
+  "or_eq",
+  "private",
+  "protected",
+  "public",
+  "reflexpr",
+  "register",
+  "reinterpret_cast",
+  "requires",
+  "return",
+  "short",
+  "signed",
+  "sizeof",
+  "static",
+  "static_assert",
+  "static_cast",
+  "struct",
+  "switch",
+  "synchronized",
+  "template",
+  "this",
+  "thread_local",
+  "throw",
+  "true",
+  "try",
+  "typedef",
+  "typeid",
+  "typename",
+  "union",
+  "unsigned",
+  "using",
+  "virtual",
+  "void",
+  "volatile",
+  "wchar_t",
+  "while",
+  "xor",
+  "xor_eq",
+  "cout",
+  "cin",
+  "endl",
+  "std",
+  "string",
+  "vector",
+  "iostream",
+  "#include",
+].map((k) => ({ label: k, type: "keyword" }));
+
 const Editor = () => {
   const location = useLocation();
-  const [language, setLanguage] = useState("cpp");
-  const [code, setCode] = useState(
-    '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!";\n    return 0;\n}'
+
+  // 1. Initialize state from localStorage or use defaults
+  const [language, setLanguage] = useState(
+    localStorage.getItem("editorLanguage") || "cpp"
   );
+  const [code, setCode] = useState(
+    localStorage.getItem("editorCode") ||
+      '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
+  );
+  const [input, setInput] = useState(localStorage.getItem("editorInput") || "");
+
   const [output, setOutput] = useState("");
   const [displayedOutput, setDisplayedOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [input, setInput] = useState("");
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState("idle");
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+
+  // 2. Save to localStorage whenever code, language, or input changes
+  useEffect(() => {
+    localStorage.setItem("editorCode", code);
+  }, [code]);
+
+  useEffect(() => {
+    localStorage.setItem("editorLanguage", language);
+  }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem("editorInput", input);
+  }, [input]);
 
   useEffect(() => {
     if (location.state && location.state.code && location.state.language) {
@@ -54,34 +180,28 @@ const Editor = () => {
   }, [location.state]);
 
   // Typing effect for output
-  // Typing effect for output
   useEffect(() => {
-    if (isLoading) {
-      setDisplayedOutput("");
-      return;
-    }
-    if (!output) {
+    if (isLoading || !output) {
       setDisplayedOutput("");
       return;
     }
 
     let i = 0;
     const intervalId = setInterval(() => {
-      // Use substring for a more reliable update
       setDisplayedOutput(output.substring(0, i + 1));
       i++;
       if (i > output.length) {
         clearInterval(intervalId);
       }
-    }, 10); // Typing speed in ms
+    }, 10);
 
-    return () => clearInterval(intervalId); // Cleanup function
+    return () => clearInterval(intervalId);
   }, [output, isLoading]);
 
   const languageExtensions = {
-    cpp: [cpp()],
-    python: [python()],
-    javascript: [javascript({ jsx: true })],
+    cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
+    python: [python(), autocompletion()],
+    javascript: [javascript({ jsx: true }), autocompletion()],
   };
 
   const onChange = useCallback((value) => {
@@ -92,7 +212,7 @@ const Editor = () => {
     setIsLoading(true);
     setStatus("running");
     setOutput("");
-    setDisplayedOutput(""); // Clear displayed output immediately
+    setDisplayedOutput("");
     const token = localStorage.getItem("token");
     try {
       const response = await axios.post(

@@ -6,6 +6,7 @@
     "@chakra-ui/react": "^2.8.2",
     "@chakra-ui/system": "^2.6.2",
     "@chakra-ui/theme": "^3.4.9",
+    "@codemirror/autocomplete": "^6.19.0",
     "@codemirror/lang-cpp": "^6.0.2",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-python": "^6.1.6",
