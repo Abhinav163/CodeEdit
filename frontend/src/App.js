@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Routes,
   Route,
@@ -7,12 +7,24 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { Box, Button, Flex, Heading, Link } from "@chakra-ui/react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Flex,
+  Heading,
+  Link,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+} from "@chakra-ui/react";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Editor from "./pages/Editor";
 import Profile from "./pages/Profile";
 import "./App.css";
+import { jwtDecode } from "jwt-decode";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -23,15 +35,53 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
+  const [user, setUser] = useState(null);
+  const [avatarColor, setAvatarColor] = useState("#000000");
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
-    localStorage.removeItem("lastActivity"); // Clear activity timer on logout
+    localStorage.removeItem("lastActivity");
+    setUser(null); // Explicitly clear user state
     navigate("/login");
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        // Check if the token has the required user info
+        if (decodedToken.user && decodedToken.user.firstName) {
+          setUser(decodedToken.user);
+          // Set a stable random color
+          const letters = "0123456789ABCDEF";
+          let color = "#";
+          for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+          }
+          setAvatarColor(color);
+        } else {
+          // Token is old or malformed, force logout
+          handleLogout();
+        }
+      } catch (error) {
+        console.error("Invalid token:", error);
+        handleLogout();
+      }
+    } else {
+      // Clear user state if token is removed (e.g., by inactivity logout)
+      setUser(null);
+    }
+  }, [token, handleLogout]);
 
   const isAuthPage =
     location.pathname === "/login" || location.pathname === "/signup";
+
+  const getInitials = (firstName, lastName) => {
+    if (!firstName || !lastName) {
+      return "";
+    }
+    return `${firstName[0]}${lastName[0]}`;
+  };
 
   return (
     <Flex
@@ -57,7 +107,7 @@ const Navbar = () => {
         </Heading>
       </Flex>
       <Box>
-        {!token ? (
+        {!user ? (
           !isAuthPage && (
             <>
               <Link as={RouterLink} to="/login">
@@ -73,20 +123,37 @@ const Navbar = () => {
             </>
           )
         ) : (
-          <>
+          <Flex align="center">
             <Link as={RouterLink} to="/profile">
               <Button variant="ghost" mr={4} _hover={{ bg: "transparent" }}>
                 My Snippets
               </Button>
             </Link>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              _hover={{ bg: "transparent" }}
-            >
-              Logout
-            </Button>
-          </>
+            <Menu>
+              <MenuButton
+                as={Button}
+                variant="ghost"
+                _hover={{ bg: "transparent" }}
+                _active={{ bg: "transparent" }}
+              >
+                <Flex align="center">
+                  <Avatar
+                    size="sm"
+                    name={getInitials(user.firstName, user.lastName)}
+                    bg="white"
+                    color={avatarColor}
+                    mr={2}
+                  />
+                  {user.firstName}
+                </Flex>
+              </MenuButton>
+              <MenuList bg="gray.800" borderColor="gray.700">
+                <MenuItem onClick={handleLogout} _hover={{ bg: "gray.700" }}>
+                  Logout
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </Flex>
         )}
       </Box>
     </Flex>

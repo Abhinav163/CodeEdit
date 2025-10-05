@@ -20,7 +20,12 @@ import {
 import { FaGoogle, FaGithub } from "react-icons/fa";
 
 const Signup = () => {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
@@ -87,6 +92,29 @@ const Signup = () => {
               </Heading>
               <Text color="gray.400">Start your coding journey with us</Text>
             </Stack>
+
+            <Flex gap={4}>
+              <FormControl isRequired>
+                <FormLabel>First Name</FormLabel>
+                <Input
+                  type="text"
+                  name="firstName"
+                  placeholder="Enter your first name"
+                  onChange={onChange}
+                  bg="gray.700"
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Last Name</FormLabel>
+                <Input
+                  type="text"
+                  name="lastName"
+                  placeholder="Enter your last name"
+                  onChange={onChange}
+                  bg="gray.700"
+                />
+              </FormControl>
+            </Flex>
 
             <FormControl isRequired>
               <FormLabel>Email address</FormLabel>
