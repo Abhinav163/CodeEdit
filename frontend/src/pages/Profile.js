@@ -33,6 +33,11 @@ import {
   IconButton,
   InputGroup,
   InputRightElement,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@chakra-ui/react";
 import { FaPlus, FaTrash, FaClipboard } from "react-icons/fa";
 import axios from "axios";
@@ -45,8 +50,69 @@ const languageMap = {
   javascript: { icon: SiJavascript, color: "yellow.300" },
 };
 
+const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
+  const langInfo = languageMap[snippet.language] || {};
+  return (
+    <Box className="animated-border-box" key={snippet._id}>
+      <Card
+        bg="gray.800"
+        boxShadow="lg"
+        _hover={{ transform: "translateY(-5px)", boxShadow: "xl" }}
+        transition="all 0.2s"
+        className="glass-card"
+      >
+        <CardHeader>
+          <Flex align="center" justify="space-between">
+            <Heading size="md">{snippet.title}</Heading>
+            <Icon as={langInfo.icon} color={langInfo.color} boxSize={6} />
+          </Flex>
+        </CardHeader>
+        <CardBody>
+          <Text
+            noOfLines={3}
+            color="gray.400"
+            bg="gray.900"
+            p={3}
+            borderRadius="md"
+            fontFamily="mono"
+          >
+            {snippet.code}
+          </Text>
+        </CardBody>
+        <CardFooter>
+          <ButtonGroup spacing="2">
+            <Button
+              as={RouterLink}
+              to={`/editor/${snippet._id}`}
+              variant="solid"
+              colorScheme="teal"
+            >
+              Open
+            </Button>
+            <Button
+              variant="solid"
+              colorScheme="blue"
+              onClick={() => onShareClick(snippet)}
+            >
+              Share
+            </Button>
+            <Button
+              variant="ghost"
+              colorScheme="red"
+              onClick={() => onDeleteClick(snippet._id)}
+            >
+              Delete
+            </Button>
+          </ButtonGroup>
+        </CardFooter>
+      </Card>
+    </Box>
+  );
+};
+
 const Profile = () => {
-  const [snippets, setSnippets] = useState([]);
+  const [mySnippets, setMySnippets] = useState([]);
+  const [sharedSnippets, setSharedSnippets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snippetToDelete, setSnippetToDelete] = useState(null);
   const [snippetToShare, setSnippetToShare] = useState(null);
@@ -68,13 +134,19 @@ const Profile = () => {
     const fetchSnippets = async () => {
       const token = localStorage.getItem("token");
       try {
-        const res = await axios.get(
-          "https://codeedit-backend.onrender.com/api/snippets/user",
-          {
+        const [mySnippetsRes, sharedSnippetsRes] = await Promise.all([
+          axios.get("https://codeedit-backend.onrender.com/api/snippets/user", {
             headers: { "x-auth-token": token },
-          }
-        );
-        setSnippets(res.data);
+          }),
+          axios.get(
+            "https://codeedit-backend.onrender.com/api/snippets/shared",
+            {
+              headers: { "x-auth-token": token },
+            }
+          ),
+        ]);
+        setMySnippets(mySnippetsRes.data);
+        setSharedSnippets(sharedSnippetsRes.data);
       } catch (err) {
         toast({
           title: "Error",
@@ -102,39 +174,30 @@ const Profile = () => {
 
     const token = localStorage.getItem("token");
     try {
-      // Make the snippet public before sharing
       await axios.patch(
         `https://codeedit-backend.onrender.com/api/snippets/${snippetToShare._id}/share`,
-        {},
+        { emails: collaboratorEmails.filter((email) => email) },
         { headers: { "x-auth-token": token } }
       );
 
       const url = `${window.location.origin}/editor/${snippetToShare._id}`;
       navigator.clipboard.writeText(url);
 
-      // Here you would typically send the emails to your backend
-      // For now, we'll just log them to the console
-      console.log(
-        "Inviting collaborators:",
-        collaboratorEmails.filter((email) => email)
-      );
-
       toast({
         title: "Link Copied!",
-        description: "Collaboration link has been copied to your clipboard.",
+        description: "Collaboration link has been copied and invites sent.",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
 
-      // Reset state and close modal
       onShareClose();
       setCollaboratorEmails([""]);
       setSnippetToShare(null);
     } catch (err) {
       toast({
         title: "Sharing Error",
-        description: "Could not make the snippet public for sharing.",
+        description: "Could not share the snippet.",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -151,7 +214,7 @@ const Profile = () => {
           headers: { "x-auth-token": token },
         }
       );
-      setSnippets(snippets.filter((s) => s._id !== snippetToDelete));
+      setMySnippets(mySnippets.filter((s) => s._id !== snippetToDelete));
       toast({
         title: "Success",
         description: "Snippet deleted successfully.",
@@ -191,26 +254,6 @@ const Profile = () => {
     );
   }
 
-  if (snippets.length === 0) {
-    return (
-      <Flex
-        direction="column"
-        align="center"
-        justify="center"
-        height="50vh"
-        textAlign="center"
-      >
-        <Heading>No Snippets Yet</Heading>
-        <Text mt={2} mb={4}>
-          It looks a bit empty here. Why not save your first piece of code?
-        </Text>
-        <Button as={RouterLink} to="/" colorScheme="teal">
-          Create a Snippet
-        </Button>
-      </Flex>
-    );
-  }
-
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
@@ -219,71 +262,47 @@ const Profile = () => {
           Create New
         </Button>
       </Flex>
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-        {snippets.map((snippet) => {
-          const langInfo = languageMap[snippet.language] || {};
-          return (
-            <Box className="animated-border-box" key={snippet._id}>
-              <Card
-                bg="gray.800"
-                boxShadow="lg"
-                _hover={{ transform: "translateY(-5px)", boxShadow: "xl" }}
-                transition="all 0.2s"
-                className="glass-card"
-              >
-                <CardHeader>
-                  <Flex align="center" justify="space-between">
-                    <Heading size="md">{snippet.title}</Heading>
-                    <Icon
-                      as={langInfo.icon}
-                      color={langInfo.color}
-                      boxSize={6}
-                    />
-                  </Flex>
-                </CardHeader>
-                <CardBody>
-                  <Text
-                    noOfLines={3}
-                    color="gray.400"
-                    bg="gray.900"
-                    p={3}
-                    borderRadius="md"
-                    fontFamily="mono"
-                  >
-                    {snippet.code}
-                  </Text>
-                </CardBody>
-                <CardFooter>
-                  <ButtonGroup spacing="2">
-                    <Button
-                      as={RouterLink}
-                      to={`/editor/${snippet._id}`}
-                      variant="solid"
-                      colorScheme="teal"
-                    >
-                      Open
-                    </Button>
-                    <Button
-                      variant="solid"
-                      colorScheme="blue"
-                      onClick={() => handleShareClick(snippet)}
-                    >
-                      Share
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => openDeleteDialog(snippet._id)}
-                    >
-                      Delete
-                    </Button>
-                  </ButtonGroup>
-                </CardFooter>
-              </Card>
-            </Box>
-          );
-        })}
-      </SimpleGrid>
+
+      <Tabs isFitted variant="enclosed">
+        <TabList>
+          <Tab>My Snippets</Tab>
+          <Tab>Shared With Me</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            {mySnippets.length > 0 ? (
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                {mySnippets.map((snippet) => (
+                  <SnippetCard
+                    key={snippet._id}
+                    snippet={snippet}
+                    onShareClick={handleShareClick}
+                    onDeleteClick={openDeleteDialog}
+                  />
+                ))}
+              </SimpleGrid>
+            ) : (
+              <Text>You haven't created any snippets yet.</Text>
+            )}
+          </TabPanel>
+          <TabPanel>
+            {sharedSnippets.length > 0 ? (
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                {sharedSnippets.map((snippet) => (
+                  <SnippetCard
+                    key={snippet._id}
+                    snippet={snippet}
+                    onShareClick={handleShareClick}
+                    onDeleteClick={openDeleteDialog}
+                  />
+                ))}
+              </SimpleGrid>
+            ) : (
+              <Text>No snippets have been shared with you yet.</Text>
+            )}
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
@@ -387,7 +406,7 @@ const Profile = () => {
               Cancel
             </Button>
             <Button colorScheme="blue" onClick={handleShare}>
-              Share
+              Share & Copy Link
             </Button>
           </ModalFooter>
         </ModalContent>
