@@ -38,6 +38,7 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  Checkbox,
 } from "@chakra-ui/react";
 import { FaPlus, FaTrash, FaClipboard } from "react-icons/fa";
 import axios from "axios";
@@ -117,6 +118,7 @@ const Profile = () => {
   const [snippetToDelete, setSnippetToDelete] = useState(null);
   const [snippetToShare, setSnippetToShare] = useState(null);
   const [collaboratorEmails, setCollaboratorEmails] = useState([""]);
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const {
     isOpen: isDeleteOpen,
     onOpen: onDeleteOpen,
@@ -133,6 +135,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchSnippets = async () => {
       const token = localStorage.getItem("token");
+      setLoading(true);
       try {
         const [mySnippetsRes, sharedSnippetsRes] = await Promise.all([
           axios.get("https://codeedit-backend.onrender.com/api/snippets/user", {
@@ -166,6 +169,8 @@ const Profile = () => {
 
   const handleShareClick = (snippet) => {
     setSnippetToShare(snippet);
+    setIsReadOnly(snippet.readOnly || false);
+    setCollaboratorEmails([""]);
     onShareOpen();
   };
 
@@ -176,7 +181,10 @@ const Profile = () => {
     try {
       await axios.patch(
         `https://codeedit-backend.onrender.com/api/snippets/${snippetToShare._id}/share`,
-        { emails: collaboratorEmails.filter((email) => email) },
+        {
+          emails: collaboratorEmails.filter((email) => email),
+          readOnly: isReadOnly,
+        },
         { headers: { "x-auth-token": token } }
       );
 
@@ -257,14 +265,14 @@ const Profile = () => {
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
-        <Heading>My Snippets</Heading>
+        <Heading>Snippets</Heading>
         <Button as={RouterLink} to="/" colorScheme="teal">
           Create New
         </Button>
       </Flex>
 
       <Tabs isFitted variant="enclosed">
-        <TabList>
+        <TabList mb="1em">
           <Tab>My Snippets</Tab>
           <Tab>Shared With Me</Tab>
         </TabList>
@@ -363,6 +371,13 @@ const Profile = () => {
                     />
                   </InputRightElement>
                 </InputGroup>
+                <Checkbox
+                  isChecked={isReadOnly}
+                  onChange={(e) => setIsReadOnly(e.target.checked)}
+                  mt={2}
+                >
+                  Read-Only
+                </Checkbox>
               </Box>
               <Box>
                 <Text fontWeight="bold" mb={2}>

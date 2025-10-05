@@ -5,8 +5,8 @@ const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 const { spawn } = require("child_process");
-const http = require("http"); // 1. Import http
-const { Server } = require("socket.io"); // 2. Import socket.io Server
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 // Middleware for authentication
@@ -19,14 +19,15 @@ mongoose
   .catch((err) => console.log(err));
 
 const app = express();
-const server = http.createServer(app); // 3. Create an HTTP server from the Express app
+const server = http.createServer(app);
 
-// 4. Initialize Socket.IO with CORS configuration
+// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
     origin: [
       "https://codeedit-frontend.onrender.com",
-      "https://code-edit-lac.vercel.app", // Add your Vercel URL here
+      "https://code-edit-lac.vercel.app",
+      "http://localhost:3000",
     ],
     methods: ["GET", "POST"],
   },
@@ -42,18 +43,53 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/snippets", require("./routes/snippets"));
 
 // --- WebSocket Connection Logic ---
+const roomUsers = {};
+
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on("join-room", (roomId) => {
+  socket.on("join-room", (roomId, user) => {
     socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+    if (!roomUsers[roomId]) {
+      roomUsers[roomId] = [];
+    }
+    // Add user if not already in the list
+    if (user && !roomUsers[roomId].some((u) => u.id === user.id)) {
+      // Assign the current socket ID to the user payload
+      user.socketId = socket.id;
+      roomUsers[roomId].push(user);
+    }
+    // Broadcast the updated user list to everyone in the room
+    io.to(roomId).emit("update-user-list", roomUsers[roomId]);
+    console.log(`User ${socket.id} (${user?.firstName}) joined room ${roomId}`);
   });
 
   socket.on("code-change", (data) => {
     const { roomId, newCode } = data;
     // Broadcast to everyone else in the room except the sender
     socket.to(roomId).emit("code-update", newCode);
+  });
+
+  socket.on("send-chat-message", (data) => {
+    const { roomId, message } = data;
+    // Broadcast the message to other users in the room
+    socket.to(roomId).emit("receive-chat-message", message);
+  });
+
+  // Handle user disconnection
+  socket.on("disconnecting", () => {
+    // Find which rooms the socket was in
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach((roomId) => {
+      if (roomUsers[roomId]) {
+        // Remove the user from the room's user list
+        roomUsers[roomId] = roomUsers[roomId].filter(
+          (u) => u.socketId !== socket.id
+        );
+        // Broadcast the new user list
+        io.to(roomId).emit("update-user-list", roomUsers[roomId]);
+      }
+    });
   });
 
   socket.on("disconnect", () => {
@@ -134,7 +170,6 @@ app.post("/run", auth, (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-// 5. Start the http server instead of the Express app
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

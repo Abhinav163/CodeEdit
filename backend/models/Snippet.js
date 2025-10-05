@@ -23,6 +23,11 @@ const SnippetSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  readOnly: {
+    // New field
+    type: Boolean,
+    default: false,
+  },
   sharedWith: [
     {
       type: mongoose.Schema.Types.ObjectId,

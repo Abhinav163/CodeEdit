@@ -61,7 +61,6 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Snippet not found" });
     }
 
-    // Allow access if snippet is public, user is owner, or it's shared with the user
     const isOwner = snippet.user.toString() === req.user.id;
     const isShared = snippet.sharedWith.some((id) => id.equals(req.user.id));
 
@@ -89,7 +88,11 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Snippet not found" });
     }
 
-    // Allow update if user is owner or it's shared with them
+    // Prevent edits if the snippet is read-only
+    if (snippet.readOnly) {
+      return res.status(403).json({ msg: "This snippet is read-only." });
+    }
+
     const isOwner = snippet.user.toString() === req.user.id;
     const isShared = snippet.sharedWith.some((id) => id.equals(req.user.id));
 
@@ -112,7 +115,7 @@ router.put("/:id", auth, async (req, res) => {
 // @route   PATCH /api/snippets/:id/share
 // @desc    Make a snippet public and add collaborators
 router.patch("/:id/share", auth, async (req, res) => {
-  const { emails } = req.body;
+  const { emails, readOnly } = req.body;
 
   try {
     let snippet = await Snippet.findById(req.params.id);
@@ -140,6 +143,7 @@ router.patch("/:id/share", auth, async (req, res) => {
     }
 
     snippet.isPublic = true;
+    snippet.readOnly = !!readOnly; // Set read-only status
     await snippet.save();
 
     res.json({ msg: "Snippet is now public and shareable", snippet });

@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom"; // Import useNavigate
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import CodeMirror from "@uiw/react-codemirror";
 import { cpp, cppLanguage } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
@@ -10,6 +11,8 @@ import { tokyoNight } from "@uiw/codemirror-theme-tokyo-night";
 import { autocompletion, completeFromList } from "@codemirror/autocomplete";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
+  Avatar,
+  AvatarGroup,
   Box,
   Flex,
   Select,
@@ -29,8 +32,11 @@ import {
   useToast,
   Tag,
   IconButton,
+  Text,
+  VStack,
+  HStack,
 } from "@chakra-ui/react";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaPaperPlane } from "react-icons/fa";
 
 const cppKeywords = [
   "alignas",
@@ -137,39 +143,65 @@ const cppKeywords = [
   "#include",
 ].map((k) => ({ label: k, type: "keyword" }));
 
-const DEFAULT_CODE =
-  '#include <iostream>\\n\\nint main() {\\n    std::cout << "Hello, World!" << std::endl;\\n    return 0;\\n}';
+const DEFAULT_CODE = `#include <iostream>
+
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}`;
 
 const Editor = () => {
   const { id: snippetId } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate(); // Add the navigate hook
+  const navigate = useNavigate();
   const socketRef = useRef(null);
   const isRemoteChange = useRef(false);
 
-  const [language, setLanguage] = useState(
-    localStorage.getItem("editorLanguage") || "cpp"
-  );
-  const [code, setCode] = useState(
-    localStorage.getItem("editorCode") || DEFAULT_CODE
-  );
-  const [input, setInput] = useState(localStorage.getItem("editorInput") || "");
-
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [language, setLanguage] = useState("cpp");
+  const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [displayedOutput, setDisplayedOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState("idle");
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // New state for collaboration features
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setCurrentUser(decoded.user);
+      } catch (e) {
+        console.error("Invalid token on editor mount");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Ensure currentUser is available before connecting
+    if (!currentUser) return;
+
     socketRef.current = io("https://codeedit-backend.onrender.com");
     const socket = socketRef.current;
 
     if (snippetId) {
-      socket.emit("join-room", snippetId);
+      const userPayload = {
+        id: currentUser.id,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        socketId: socket.id,
+      };
+      socket.emit("join-room", snippetId, userPayload);
 
       const fetchSnippet = async () => {
         const token = localStorage.getItem("token");
@@ -181,14 +213,15 @@ const Editor = () => {
           isRemoteChange.current = true;
           setCode(res.data.code);
           setLanguage(res.data.language);
+          setIsReadOnly(res.data.readOnly);
         } catch (err) {
           toast({ title: "Error fetching snippet", status: "error" });
         }
       };
       fetchSnippet();
     } else {
-      // When not in a session, load from local storage or default
-      setCode(localStorage.getItem("editorCode") || DEFAULT_CODE);
+      const savedCode = localStorage.getItem("editorCode");
+      setCode(savedCode !== null ? savedCode : DEFAULT_CODE);
       setLanguage(localStorage.getItem("editorLanguage") || "cpp");
       setInput(localStorage.getItem("editorInput") || "");
     }
@@ -198,86 +231,36 @@ const Editor = () => {
       setCode(newCode);
     });
 
+    socket.on("update-user-list", (users) => {
+      setActiveUsers(users);
+    });
+
+    socket.on("receive-chat-message", (message) => {
+      setChatMessages((prev) => [...prev, message]);
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [snippetId, toast]);
+  }, [snippetId, toast, currentUser]);
 
-  useEffect(() => {
-    if (!snippetId) {
-      localStorage.setItem("editorCode", code);
+  // ... (localStorage useEffects remain the same)
+
+  const handleSendChatMessage = () => {
+    if (chatInput.trim() && snippetId && currentUser) {
+      const message = {
+        id: Date.now(),
+        sender: currentUser.firstName,
+        text: chatInput,
+      };
+      setChatMessages((prev) => [...prev, message]);
+      socketRef.current.emit("send-chat-message", {
+        roomId: snippetId,
+        message,
+      });
+      setChatInput("");
     }
-  }, [code, snippetId]);
-
-  useEffect(() => {
-    if (!snippetId) {
-      localStorage.setItem("editorLanguage", language);
-    }
-  }, [language, snippetId]);
-
-  useEffect(() => {
-    if (!snippetId) {
-      localStorage.setItem("editorInput", input);
-    }
-  }, [input, snippetId]);
-
-  useEffect(() => {
-    if (location.state && location.state.code && location.state.language) {
-      setCode(location.state.code);
-      setLanguage(location.state.language);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    if (isLoading || !output) {
-      setDisplayedOutput("");
-      return;
-    }
-
-    let i = 0;
-    const intervalId = setInterval(() => {
-      setDisplayedOutput(output.substring(0, i + 1));
-      i++;
-      if (i > output.length) {
-        clearInterval(intervalId);
-      }
-    }, 10);
-
-    return () => clearInterval(intervalId);
-  }, [output, isLoading]);
-
-  const languageExtensions = {
-    cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
-    python: [python(), autocompletion()],
-    javascript: [javascript({ jsx: true }), autocompletion()],
   };
-
-  const debounce = (func, delay) => {
-    let timeout;
-    return function (...args) {
-      const context = this;
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-  };
-
-  const saveCode = useCallback(
-    debounce(async (newCode) => {
-      if (snippetId) {
-        const token = localStorage.getItem("token");
-        try {
-          await axios.put(
-            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
-            { code: newCode },
-            { headers: { "x-auth-token": token } }
-          );
-        } catch (err) {
-          console.error("Failed to save code snippet:", err);
-        }
-      }
-    }, 1000),
-    [snippetId]
-  );
 
   const onChange = useCallback(
     (value) => {
@@ -361,12 +344,10 @@ const Editor = () => {
   };
 
   const handleLeaveSession = () => {
-    // Clear local storage to ensure a fresh start
     localStorage.removeItem("editorCode");
     localStorage.removeItem("editorLanguage");
     localStorage.removeItem("editorInput");
 
-    // Navigate to the root editor page
     navigate("/");
   };
 
@@ -385,6 +366,39 @@ const Editor = () => {
     );
   };
 
+  const languageExtensions = {
+    cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
+    python: [python(), autocompletion()],
+    javascript: [javascript({ jsx: true }), autocompletion()],
+  };
+
+  const debounce = (func, delay) => {
+    let timeout;
+    return function (...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+  };
+
+  const saveCode = useCallback(
+    debounce(async (newCode) => {
+      if (snippetId) {
+        const token = localStorage.getItem("token");
+        try {
+          await axios.put(
+            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
+            { code: newCode },
+            { headers: { "x-auth-token": token } }
+          );
+        } catch (err) {
+          console.error("Failed to save code snippet:", err);
+        }
+      }
+    }, 1000),
+    [snippetId]
+  );
+
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={4}>
@@ -392,12 +406,25 @@ const Editor = () => {
           w="150px"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          isDisabled={!!snippetId} // Disable language change in a session
+          isDisabled={!!snippetId}
         >
           <option value="cpp">C++</option>
           <option value="python">Python</option>
           <option value="javascript">JavaScript</option>
         </Select>
+        {snippetId && (
+          <Flex align="center">
+            <Text mr={2}>Active users:</Text>
+            <AvatarGroup size="sm" max={3}>
+              {activeUsers.map((user) => (
+                <Avatar
+                  key={user.id}
+                  name={`${user.firstName} ${user.lastName}`}
+                />
+              ))}
+            </AvatarGroup>
+          </Flex>
+        )}
         <Flex>
           {snippetId && (
             <Button colorScheme="orange" onClick={handleLeaveSession} mr={4}>
@@ -437,6 +464,7 @@ const Editor = () => {
                 extensions={languageExtensions[language]}
                 theme={tokyoNight}
                 onChange={onChange}
+                readOnly={isReadOnly}
                 style={{ height: "100%" }}
               />
             </Box>
@@ -458,45 +486,97 @@ const Editor = () => {
         <PanelResizeHandle className="resize-handle" />
 
         <Panel defaultSize={40} minSize={20}>
-          <Flex direction="column" h="100%">
-            <Flex justify="space-between" align="center" mb={2}>
-              <Heading size="sm">Output</Heading>
-              <Flex align="center" gap={2}>
-                <StatusTag />
-                <IconButton
-                  aria-label="Clear output"
-                  icon={<FaTrash />}
-                  size="xs"
-                  onClick={() => {
-                    setOutput("");
-                    setDisplayedOutput("");
-                  }}
-                />
+          <PanelGroup direction="vertical">
+            <Panel defaultSize={60} minSize={20}>
+              <Flex direction="column" h="100%">
+                <Flex justify="space-between" align="center" mb={2}>
+                  <Heading size="sm">Output</Heading>
+                  <Flex align="center" gap={2}>
+                    <StatusTag />
+                    <IconButton
+                      aria-label="Clear output"
+                      icon={<FaTrash />}
+                      size="xs"
+                      onClick={() => {
+                        setOutput("");
+                        setDisplayedOutput("");
+                      }}
+                    />
+                  </Flex>
+                </Flex>
+                <Box
+                  p={4}
+                  bg="gray.900"
+                  borderRadius="md"
+                  h="100%"
+                  fontFamily="mono"
+                  whiteSpace="pre-wrap"
+                  color="white"
+                  overflowY="auto"
+                >
+                  {isLoading ? (
+                    <Spinner />
+                  ) : (
+                    <>
+                      {displayedOutput}
+                      {displayedOutput &&
+                        displayedOutput.length === output.length && (
+                          <span className="blinking-cursor">|</span>
+                        )}
+                    </>
+                  )}
+                </Box>
               </Flex>
-            </Flex>
-            <Box
-              p={4}
-              bg="gray.900"
-              borderRadius="md"
-              h="100%"
-              fontFamily="mono"
-              whiteSpace="pre-wrap"
-              color="white"
-              overflowY="auto"
-            >
-              {isLoading ? (
-                <Spinner />
-              ) : (
-                <>
-                  {displayedOutput}
-                  {displayedOutput &&
-                    displayedOutput.length === output.length && (
-                      <span className="blinking-cursor">|</span>
-                    )}
-                </>
-              )}
-            </Box>
-          </Flex>
+            </Panel>
+            {snippetId && (
+              <PanelResizeHandle
+                style={{ height: "10px", background: "#1A202C" }}
+              />
+            )}
+            {snippetId && (
+              <Panel defaultSize={40} minSize={20}>
+                <Flex direction="column" h="100%">
+                  <Heading size="sm" mb={2} mt={2}>
+                    Chat
+                  </Heading>
+                  <VStack
+                    flex="1"
+                    overflowY="auto"
+                    bg="gray.900"
+                    p={2}
+                    borderRadius="md"
+                    align="start"
+                  >
+                    {chatMessages.map((msg) => (
+                      <Box key={msg.id} maxW="80%">
+                        <Text fontWeight="bold" fontSize="sm">
+                          {msg.sender}
+                        </Text>
+                        <Text bg="gray.700" p={2} borderRadius="md">
+                          {msg.text}
+                        </Text>
+                      </Box>
+                    ))}
+                  </VStack>
+                  <HStack mt={2}>
+                    <Input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Type a message..."
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handleSendChatMessage()
+                      }
+                    />
+                    <IconButton
+                      aria-label="Send message"
+                      icon={<FaPaperPlane />}
+                      onClick={handleSendChatMessage}
+                    />
+                  </HStack>
+                </Flex>
+              </Panel>
+            )}
+          </PanelGroup>
         </Panel>
       </PanelGroup>
 
