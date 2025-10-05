@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import io from "socket.io-client";
 import axios from "axios";
 import CodeMirror from "@uiw/react-codemirror";
@@ -140,6 +140,7 @@ const cppKeywords = [
 const Editor = () => {
   const { id: snippetId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate(); // Add the navigate hook
   const socketRef = useRef(null);
   const isRemoteChange = useRef(false);
 
@@ -151,7 +152,6 @@ const Editor = () => {
       '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
   );
   const [input, setInput] = useState(localStorage.getItem("editorInput") || "");
-
   const [output, setOutput] = useState("");
   const [displayedOutput, setDisplayedOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -193,9 +193,7 @@ const Editor = () => {
     return () => {
       socket.disconnect();
     };
-  }, [snippetId]); //
-  // THIS IS THE FIX: `toast` has been removed from the dependency array.
-  //
+  }, [snippetId, toast]);
 
   useEffect(() => {
     if (!snippetId) {
@@ -246,7 +244,6 @@ const Editor = () => {
     javascript: [javascript({ jsx: true }), autocompletion()],
   };
 
-  // Debounce function to limit API calls
   const debounce = (func, delay) => {
     let timeout;
     return function (...args) {
@@ -256,7 +253,6 @@ const Editor = () => {
     };
   };
 
-  // Debounced function to save the code
   const saveCode = useCallback(
     debounce(async (newCode) => {
       if (snippetId) {
@@ -271,7 +267,7 @@ const Editor = () => {
           console.error("Failed to save code snippet:", err);
         }
       }
-    }, 1000), // Adjust delay as needed (e.g., 1000ms = 1 second)
+    }, 1000),
     [snippetId]
   );
 
@@ -287,7 +283,7 @@ const Editor = () => {
           roomId: snippetId,
           newCode: value,
         });
-        saveCode(value); // Call the debounced save function on code change
+        saveCode(value);
       }
     },
     [snippetId, saveCode]
@@ -356,6 +352,10 @@ const Editor = () => {
     }
   };
 
+  const handleLeaveSession = () => {
+    navigate("/");
+  };
+
   const StatusTag = () => {
     const statusConfig = {
       idle: { label: "Idle", color: "gray" },
@@ -384,6 +384,11 @@ const Editor = () => {
           <option value="javascript">JavaScript</option>
         </Select>
         <Flex>
+          {snippetId && (
+            <Button colorScheme="orange" onClick={handleLeaveSession} mr={4}>
+              Leave Session
+            </Button>
+          )}
           <Button colorScheme="blue" onClick={onOpen} mr={4}>
             Save
           </Button>

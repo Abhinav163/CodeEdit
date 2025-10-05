@@ -22,7 +22,19 @@ import {
   SimpleGrid,
   Icon,
   ButtonGroup,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Input,
+  IconButton,
+  InputGroup,
+  InputRightElement,
 } from "@chakra-ui/react";
+import { FaPlus, FaTrash, FaClipboard } from "react-icons/fa";
 import axios from "axios";
 import { Link as RouterLink } from "react-router-dom";
 import { SiCplusplus, SiPython, SiJavascript } from "react-icons/si";
@@ -37,7 +49,18 @@ const Profile = () => {
   const [snippets, setSnippets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snippetToDelete, setSnippetToDelete] = useState(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [snippetToShare, setSnippetToShare] = useState(null);
+  const [collaboratorEmails, setCollaboratorEmails] = useState([""]);
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+  const {
+    isOpen: isShareOpen,
+    onOpen: onShareOpen,
+    onClose: onShareClose,
+  } = useDisclosure();
   const cancelRef = useRef();
   const toast = useToast();
 
@@ -66,21 +89,35 @@ const Profile = () => {
 
   const openDeleteDialog = (id) => {
     setSnippetToDelete(id);
-    onOpen();
+    onDeleteOpen();
   };
 
-  const handleShare = async (snippetId) => {
+  const handleShareClick = (snippet) => {
+    setSnippetToShare(snippet);
+    onShareOpen();
+  };
+
+  const handleShare = async () => {
+    if (!snippetToShare) return;
+
     const token = localStorage.getItem("token");
     try {
       // Make the snippet public before sharing
       await axios.patch(
-        `https://codeedit-backend.onrender.com/api/snippets/${snippetId}/share`,
+        `https://codeedit-backend.onrender.com/api/snippets/${snippetToShare._id}/share`,
         {},
         { headers: { "x-auth-token": token } }
       );
 
-      const url = `${window.location.origin}/editor/${snippetId}`;
+      const url = `${window.location.origin}/editor/${snippetToShare._id}`;
       navigator.clipboard.writeText(url);
+
+      // Here you would typically send the emails to your backend
+      // For now, we'll just log them to the console
+      console.log(
+        "Inviting collaborators:",
+        collaboratorEmails.filter((email) => email)
+      );
 
       toast({
         title: "Link Copied!",
@@ -89,6 +126,11 @@ const Profile = () => {
         duration: 3000,
         isClosable: true,
       });
+
+      // Reset state and close modal
+      onShareClose();
+      setCollaboratorEmails([""]);
+      setSnippetToShare(null);
     } catch (err) {
       toast({
         title: "Sharing Error",
@@ -122,8 +164,23 @@ const Profile = () => {
         status: "error",
       });
     }
-    onClose();
+    onDeleteClose();
     setSnippetToDelete(null);
+  };
+
+  const handleCollaboratorEmailChange = (index, value) => {
+    const newEmails = [...collaboratorEmails];
+    newEmails[index] = value;
+    setCollaboratorEmails(newEmails);
+  };
+
+  const addCollaboratorField = () => {
+    setCollaboratorEmails([...collaboratorEmails, ""]);
+  };
+
+  const removeCollaboratorField = (index) => {
+    const newEmails = collaboratorEmails.filter((_, i) => i !== index);
+    setCollaboratorEmails(newEmails);
   };
 
   if (loading) {
@@ -209,7 +266,7 @@ const Profile = () => {
                     <Button
                       variant="solid"
                       colorScheme="blue"
-                      onClick={() => handleShare(snippet._id)}
+                      onClick={() => handleShareClick(snippet)}
                     >
                       Share
                     </Button>
@@ -228,10 +285,11 @@ const Profile = () => {
         })}
       </SimpleGrid>
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog
-        isOpen={isOpen}
+        isOpen={isDeleteOpen}
         leastDestructiveRef={cancelRef}
-        onClose={onClose}
+        onClose={onDeleteClose}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
@@ -240,7 +298,7 @@ const Profile = () => {
               Are you sure? You can't undo this action.
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
+              <Button ref={cancelRef} onClick={onDeleteClose}>
                 Cancel
               </Button>
               <Button colorScheme="red" onClick={handleDelete} ml={3}>
@@ -250,6 +308,90 @@ const Profile = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      {/* Share Modal */}
+      <Modal isOpen={isShareOpen} onClose={onShareClose} isCentered>
+        <ModalOverlay />
+        <ModalContent bg="gray.800">
+          <ModalHeader>Share Snippet</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Stack spacing={4}>
+              <Box>
+                <Text fontWeight="bold" mb={2}>
+                  Shareable Link:
+                </Text>
+                <InputGroup>
+                  <Input
+                    value={`${window.location.origin}/editor/${snippetToShare?._id}`}
+                    isReadOnly
+                    bg="gray.700"
+                  />
+                  <InputRightElement>
+                    <IconButton
+                      aria-label="Copy link"
+                      icon={<FaClipboard />}
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/editor/${snippetToShare?._id}`
+                        );
+                        toast({
+                          title: "Link Copied!",
+                          status: "success",
+                          duration: 2000,
+                        });
+                      }}
+                    />
+                  </InputRightElement>
+                </InputGroup>
+              </Box>
+              <Box>
+                <Text fontWeight="bold" mb={2}>
+                  Invite Collaborators by Email:
+                </Text>
+                {collaboratorEmails.map((email, index) => (
+                  <InputGroup key={index} mb={2}>
+                    <Input
+                      type="email"
+                      placeholder="collaborator@example.com"
+                      value={email}
+                      onChange={(e) =>
+                        handleCollaboratorEmailChange(index, e.target.value)
+                      }
+                      bg="gray.700"
+                    />
+                    <InputRightElement>
+                      <IconButton
+                        aria-label="Remove collaborator"
+                        icon={<FaTrash />}
+                        size="sm"
+                        onClick={() => removeCollaboratorField(index)}
+                        isDisabled={collaboratorEmails.length === 1}
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                ))}
+                <Button
+                  leftIcon={<FaPlus />}
+                  onClick={addCollaboratorField}
+                  size="sm"
+                  mt={2}
+                >
+                  Add another
+                </Button>
+              </Box>
+            </Stack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onShareClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="blue" onClick={handleShare}>
+              Share
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
