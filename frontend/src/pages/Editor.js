@@ -150,6 +150,13 @@ int main() {
     return 0;
 }`;
 
+// FIX: Define languageExtensions before the component that uses it
+const languageExtensions = {
+  cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
+  python: [python(), autocompletion()],
+  javascript: [javascript({ jsx: true }), autocompletion()],
+};
+
 const Editor = () => {
   const { id: snippetId } = useParams();
   const navigate = useNavigate();
@@ -166,7 +173,6 @@ const Editor = () => {
   const [status, setStatus] = useState("idle");
   const [isReadOnly, setIsReadOnly] = useState(false);
 
-  // New state for collaboration features
   const [activeUsers, setActiveUsers] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -188,7 +194,6 @@ const Editor = () => {
   }, []);
 
   useEffect(() => {
-    // Ensure currentUser is available before connecting
     if (!currentUser) return;
 
     socketRef.current = io("https://codeedit-backend.onrender.com");
@@ -244,7 +249,41 @@ const Editor = () => {
     };
   }, [snippetId, toast, currentUser]);
 
-  // ... (localStorage useEffects remain the same)
+  useEffect(() => {
+    if (!snippetId) {
+      localStorage.setItem("editorCode", code);
+    }
+  }, [code, snippetId]);
+
+  useEffect(() => {
+    if (!snippetId) {
+      localStorage.setItem("editorLanguage", language);
+    }
+  }, [language, snippetId]);
+
+  useEffect(() => {
+    if (!snippetId) {
+      localStorage.setItem("editorInput", input);
+    }
+  }, [input, snippetId]);
+
+  useEffect(() => {
+    if (isLoading || !output) {
+      setDisplayedOutput("");
+      return;
+    }
+
+    let i = 0;
+    const intervalId = setInterval(() => {
+      setDisplayedOutput(output.substring(0, i + 1));
+      i++;
+      if (i > output.length) {
+        clearInterval(intervalId);
+      }
+    }, 10);
+
+    return () => clearInterval(intervalId);
+  }, [output, isLoading]);
 
   const handleSendChatMessage = () => {
     if (chatInput.trim() && snippetId && currentUser) {
@@ -261,6 +300,33 @@ const Editor = () => {
       setChatInput("");
     }
   };
+
+  const debounce = (func, delay) => {
+    let timeout;
+    return function (...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+  };
+
+  const saveCode = useCallback(
+    debounce(async (newCode) => {
+      if (snippetId) {
+        const token = localStorage.getItem("token");
+        try {
+          await axios.put(
+            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
+            { code: newCode },
+            { headers: { "x-auth-token": token } }
+          );
+        } catch (err) {
+          console.error("Failed to save code snippet:", err);
+        }
+      }
+    }, 1000),
+    [snippetId]
+  );
 
   const onChange = useCallback(
     (value) => {
@@ -347,7 +413,6 @@ const Editor = () => {
     localStorage.removeItem("editorCode");
     localStorage.removeItem("editorLanguage");
     localStorage.removeItem("editorInput");
-
     navigate("/");
   };
 
@@ -365,39 +430,6 @@ const Editor = () => {
       </Tag>
     );
   };
-
-  const languageExtensions = {
-    cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
-    python: [python(), autocompletion()],
-    javascript: [javascript({ jsx: true }), autocompletion()],
-  };
-
-  const debounce = (func, delay) => {
-    let timeout;
-    return function (...args) {
-      const context = this;
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-  };
-
-  const saveCode = useCallback(
-    debounce(async (newCode) => {
-      if (snippetId) {
-        const token = localStorage.getItem("token");
-        try {
-          await axios.put(
-            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
-            { code: newCode },
-            { headers: { "x-auth-token": token } }
-          );
-        } catch (err) {
-          console.error("Failed to save code snippet:", err);
-        }
-      }
-    }, 1000),
-    [snippetId]
-  );
 
   return (
     <Box>
