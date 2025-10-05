@@ -137,6 +137,9 @@ const cppKeywords = [
   "#include",
 ].map((k) => ({ label: k, type: "keyword" }));
 
+const DEFAULT_CODE =
+  '#include <iostream>\\n\\nint main() {\\n    std::cout << "Hello, World!" << std::endl;\\n    return 0;\\n}';
+
 const Editor = () => {
   const { id: snippetId } = useParams();
   const location = useLocation();
@@ -148,10 +151,10 @@ const Editor = () => {
     localStorage.getItem("editorLanguage") || "cpp"
   );
   const [code, setCode] = useState(
-    localStorage.getItem("editorCode") ||
-      '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
+    localStorage.getItem("editorCode") || DEFAULT_CODE
   );
   const [input, setInput] = useState(localStorage.getItem("editorInput") || "");
+
   const [output, setOutput] = useState("");
   const [displayedOutput, setDisplayedOutput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -183,6 +186,11 @@ const Editor = () => {
         }
       };
       fetchSnippet();
+    } else {
+      // When not in a session, load from local storage or default
+      setCode(localStorage.getItem("editorCode") || DEFAULT_CODE);
+      setLanguage(localStorage.getItem("editorLanguage") || "cpp");
+      setInput(localStorage.getItem("editorInput") || "");
     }
 
     socket.on("code-update", (newCode) => {
@@ -353,6 +361,12 @@ const Editor = () => {
   };
 
   const handleLeaveSession = () => {
+    // Clear local storage to ensure a fresh start
+    localStorage.removeItem("editorCode");
+    localStorage.removeItem("editorLanguage");
+    localStorage.removeItem("editorInput");
+
+    // Navigate to the root editor page
     navigate("/");
   };
 
@@ -378,6 +392,7 @@ const Editor = () => {
           w="150px"
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
+          isDisabled={!!snippetId} // Disable language change in a session
         >
           <option value="cpp">C++</option>
           <option value="python">Python</option>
