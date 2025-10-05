@@ -49,10 +49,9 @@ const Navbar = () => {
     if (token) {
       try {
         const decodedToken = jwtDecode(token);
-        // Check if the token has the required user info
-        if (decodedToken.user && decodedToken.user.firstName) {
+        // FIX: Set user data even if firstName is missing to prevent logout loop
+        if (decodedToken.user) {
           setUser(decodedToken.user);
-          // Set a stable random color
           const letters = "0123456789ABCDEF";
           let color = "#";
           for (let i = 0; i < 6; i++) {
@@ -60,7 +59,7 @@ const Navbar = () => {
           }
           setAvatarColor(color);
         } else {
-          // Token is old or malformed, force logout
+          // If token is malformed, logout
           handleLogout();
         }
       } catch (error) {
@@ -68,7 +67,6 @@ const Navbar = () => {
         handleLogout();
       }
     } else {
-      // Clear user state if token is removed (e.g., by inactivity logout)
       setUser(null);
     }
   }, [token, handleLogout]);
@@ -77,8 +75,9 @@ const Navbar = () => {
     location.pathname === "/login" || location.pathname === "/signup";
 
   const getInitials = (firstName, lastName) => {
+    // FIX: Add a guard clause for missing names
     if (!firstName || !lastName) {
-      return "";
+      return "?";
     }
     return `${firstName[0]}${lastName[0]}`;
   };
