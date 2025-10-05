@@ -161,40 +161,6 @@ const Editor = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
-  // useEffect(() => {
-  //   socketRef.current = io("https://codeedit-backend.onrender.com");
-  //   const socket = socketRef.current;
-
-  //   if (snippetId) {
-  //     socket.emit("join-room", snippetId);
-
-  //     const fetchSnippet = async () => {
-  //       const token = localStorage.getItem("token");
-  //       try {
-  //         const res = await axios.get(
-  //           `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
-  //           { headers: { "x-auth-token": token } }
-  //         );
-  //         isRemoteChange.current = true;
-  //         setCode(res.data.code);
-  //         setLanguage(res.data.language);
-  //       } catch (err) {
-  //         toast({ title: "Error fetching snippet", status: "error" });
-  //       }
-  //     };
-  //     fetchSnippet();
-  //   }
-
-  //   socket.on("code-update", (newCode) => {
-  //     isRemoteChange.current = true;
-  //     setCode(newCode);
-  //   });
-
-  //   return () => {
-  //     socket.disconnect();
-  //   };
-  // }, [snippetId, toast]);
-
   useEffect(() => {
     socketRef.current = io("https://codeedit-backend.onrender.com");
     const socket = socketRef.current;
@@ -227,7 +193,9 @@ const Editor = () => {
     return () => {
       socket.disconnect();
     };
-  }, [snippetId]); // Remove `toast` from this array
+  }, [snippetId]); //
+  // THIS IS THE FIX: `toast` has been removed from the dependency array.
+  //
 
   useEffect(() => {
     if (!snippetId) {
