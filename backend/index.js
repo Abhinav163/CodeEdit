@@ -24,8 +24,10 @@ const server = http.createServer(app); // 3. Create an HTTP server from the Expr
 // 4. Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    // origin: "https://codeedit-frontend.onrender.com", // Allow all origins for simplicity, restrict in production
+    origin: [
+      "https://codeedit-frontend.onrender.com",
+      "https://code-edit-lac.vercel.app", // Add your Vercel URL here
+    ],
     methods: ["GET", "POST"],
   },
 });
