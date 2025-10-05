@@ -30,6 +30,7 @@ const io = new Server(server, {
     ],
     methods: ["GET", "POST"],
   },
+  allowEIO3: true,
 });
 
 // Middlewares
