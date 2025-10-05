@@ -107,4 +107,30 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// @route   PUT /api/snippets/:id
+// @desc    Update a code snippet
+router.put("/:id", auth, async (req, res) => {
+  const { code } = req.body;
+  try {
+    let snippet = await Snippet.findById(req.params.id);
+
+    if (!snippet) {
+      return res.status(404).json({ msg: "Snippet not found" });
+    }
+
+    // Make sure the user owns the snippet
+    if (snippet.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: "Not authorized" });
+    }
+
+    snippet.code = code;
+    await snippet.save();
+
+    res.json(snippet);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
 module.exports = router;

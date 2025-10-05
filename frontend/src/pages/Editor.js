@@ -244,6 +244,35 @@ const Editor = () => {
     javascript: [javascript({ jsx: true }), autocompletion()],
   };
 
+  // Debounce function to limit API calls
+  const debounce = (func, delay) => {
+    let timeout;
+    return function (...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+  };
+
+  // Debounced function to save the code
+  const saveCode = useCallback(
+    debounce(async (newCode) => {
+      if (snippetId) {
+        const token = localStorage.getItem("token");
+        try {
+          await axios.put(
+            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
+            { code: newCode },
+            { headers: { "x-auth-token": token } }
+          );
+        } catch (err) {
+          console.error("Failed to save code snippet:", err);
+        }
+      }
+    }, 1000), // Adjust delay as needed (e.g., 1000ms = 1 second)
+    [snippetId]
+  );
+
   const onChange = useCallback(
     (value) => {
       if (isRemoteChange.current) {
@@ -256,9 +285,10 @@ const Editor = () => {
           roomId: snippetId,
           newCode: value,
         });
+        saveCode(value); // Call the debounced save function on code change
       }
     },
-    [snippetId]
+    [snippetId, saveCode]
   );
 
   const handleRun = async () => {
