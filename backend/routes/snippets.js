@@ -118,9 +118,11 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Snippet not found" });
     }
 
-    // Make sure the user owns the snippet
-    if (snippet.user.toString() !== req.user.id) {
-      return res.status(401).json({ msg: "Not authorized" });
+    // Allow update if the snippet is public OR if the current user owns it
+    if (!snippet.isPublic && snippet.user.toString() !== req.user.id) {
+      return res
+        .status(401)
+        .json({ msg: "Not authorized to update this snippet" });
     }
 
     snippet.code = code;
