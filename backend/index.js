@@ -8,7 +8,7 @@ const { spawn } = require("child_process");
 const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
-
+const Snippet = require("./models/Snippet");
 const auth = require("./middleware/auth");
 
 mongoose
@@ -68,6 +68,7 @@ io.on("connection", (socket) => {
       console.error("Error saving chat message:", error);
     }
   });
+
   socket.on("disconnecting", () => {
     const rooms = Array.from(socket.rooms);
     rooms.forEach((roomId) => {

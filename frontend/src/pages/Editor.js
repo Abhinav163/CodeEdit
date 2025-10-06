@@ -296,6 +296,7 @@ const Editor = () => {
         roomId: snippetId,
         message,
       });
+      setChatMessages((prev) => [...prev, message]);
       setChatInput("");
     }
   };
