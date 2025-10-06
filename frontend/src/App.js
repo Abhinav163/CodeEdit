@@ -41,7 +41,7 @@ const Navbar = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("lastActivity");
-    setUser(null); // Explicitly clear user state
+    setUser(null);
     navigate("/login");
   }, [navigate]);
 
@@ -49,7 +49,6 @@ const Navbar = () => {
     if (token) {
       try {
         const decodedToken = jwtDecode(token);
-        // FIX: Set user data even if firstName is missing to prevent logout loop
         if (decodedToken.user) {
           setUser(decodedToken.user);
           const letters = "0123456789ABCDEF";
@@ -59,7 +58,6 @@ const Navbar = () => {
           }
           setAvatarColor(color);
         } else {
-          // If token is malformed, logout
           handleLogout();
         }
       } catch (error) {
@@ -75,7 +73,6 @@ const Navbar = () => {
     location.pathname === "/login" || location.pathname === "/signup";
 
   const getInitials = (firstName, lastName) => {
-    // FIX: Add a guard clause for missing names
     if (!firstName || !lastName) {
       return "?";
     }
@@ -163,7 +160,7 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const LOGOUT_TIME_MS = 2 * 60 * 1000; // 2 minutes
+    const LOGOUT_TIME_MS = 2 * 60 * 1000;
 
     const checkInactivity = () => {
       const lastActivity = localStorage.getItem("lastActivity");

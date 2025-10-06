@@ -1,19 +1,16 @@
-import { extendTheme } from "@chakra-ui/react"; // Corrected import path
+import { extendTheme } from "@chakra-ui/react";
 
-// App fonts
 const fonts = {
   heading: `'Fira Code', monospace`,
   body: `'Fira Code', monospace`,
   mono: `'Fira Code', monospace`,
 };
 
-// App initial color mode
 const config = {
   initialColorMode: "dark",
   useSystemColorMode: false,
 };
 
-// Create the theme
 const theme = extendTheme({
   fonts,
   config,

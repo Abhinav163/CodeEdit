@@ -51,7 +51,6 @@ const Login = () => {
     }
   };
 
-  // Placeholder functions for social logins
   const handleGoogleLogin = () => {
     toast({
       title: "Coming Soon!",
@@ -82,7 +81,6 @@ const Login = () => {
         >
           <Stack as="form" spacing={4} onSubmit={onSubmit}>
             <Stack align="center" mb={4}>
-              {/* <Heading fontSize="2xl">Welcome Back!</Heading> */}
               <Heading fontSize="2xl" className="glitch">
                 Welcome Back!
               </Heading>

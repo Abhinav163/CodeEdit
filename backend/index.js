@@ -9,10 +9,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
-// Middleware for authentication
 const auth = require("./middleware/auth");
 
-// Connect to Database
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
@@ -20,8 +18,6 @@ mongoose
 
 const app = express();
 const server = http.createServer(app);
-
-// Initialize Socket.IO with CORS configuration
 const io = new Server(server, {
   cors: {
     origin: [
@@ -34,15 +30,10 @@ const io = new Server(server, {
   allowEIO3: true,
 });
 
-// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
-
-// --- API Routes ---
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/snippets", require("./routes/snippets"));
-
-// --- WebSocket Connection Logic ---
 const roomUsers = {};
 
 io.on("connection", (socket) => {
@@ -53,40 +44,37 @@ io.on("connection", (socket) => {
     if (!roomUsers[roomId]) {
       roomUsers[roomId] = [];
     }
-    // Add user if not already in the list
     if (user && !roomUsers[roomId].some((u) => u.id === user.id)) {
-      // Assign the current socket ID to the user payload
       user.socketId = socket.id;
       roomUsers[roomId].push(user);
     }
-    // Broadcast the updated user list to everyone in the room
     io.to(roomId).emit("update-user-list", roomUsers[roomId]);
     console.log(`User ${socket.id} (${user?.firstName}) joined room ${roomId}`);
   });
 
   socket.on("code-change", (data) => {
     const { roomId, newCode } = data;
-    // Broadcast to everyone else in the room except the sender
     socket.to(roomId).emit("code-update", newCode);
   });
 
-  socket.on("send-chat-message", (data) => {
+  socket.on("send-chat-message", async (data) => {
     const { roomId, message } = data;
-    // Broadcast the message to other users in the room
     socket.to(roomId).emit("receive-chat-message", message);
+    try {
+      await Snippet.findByIdAndUpdate(roomId, {
+        $push: { chat: { sender: message.sender, text: message.text } },
+      });
+    } catch (error) {
+      console.error("Error saving chat message:", error);
+    }
   });
-
-  // Handle user disconnection
   socket.on("disconnecting", () => {
-    // Find which rooms the socket was in
     const rooms = Array.from(socket.rooms);
     rooms.forEach((roomId) => {
       if (roomUsers[roomId]) {
-        // Remove the user from the room's user list
         roomUsers[roomId] = roomUsers[roomId].filter(
           (u) => u.socketId !== socket.id
         );
-        // Broadcast the new user list
         io.to(roomId).emit("update-user-list", roomUsers[roomId]);
       }
     });
@@ -97,7 +85,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// (Your existing /run route remains here)
 app.post("/run", auth, (req, res) => {
   const { language = "javascript", code, input = "" } = req.body;
 

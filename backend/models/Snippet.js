@@ -24,7 +24,6 @@ const SnippetSchema = new mongoose.Schema({
     default: false,
   },
   readOnly: {
-    // New field
     type: Boolean,
     default: false,
   },
@@ -38,6 +37,13 @@ const SnippetSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  chat: [
+    {
+      sender: String,
+      text: String,
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 module.exports = mongoose.model("Snippet", SnippetSchema);

@@ -311,8 +311,6 @@ const Profile = () => {
           </TabPanel>
         </TabPanels>
       </Tabs>
-
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         isOpen={isDeleteOpen}
         leastDestructiveRef={cancelRef}
@@ -335,8 +333,6 @@ const Profile = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
-
-      {/* Share Modal */}
       <Modal isOpen={isShareOpen} onClose={onShareClose} isCentered>
         <ModalOverlay />
         <ModalContent bg="gray.800">

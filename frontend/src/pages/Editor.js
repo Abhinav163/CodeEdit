@@ -150,7 +150,6 @@ int main() {
     return 0;
 }`;
 
-// FIX: Define languageExtensions before the component that uses it
 const languageExtensions = {
   cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
   python: [python(), autocompletion()],
@@ -219,6 +218,7 @@ const Editor = () => {
           setCode(res.data.code);
           setLanguage(res.data.language);
           setIsReadOnly(res.data.readOnly);
+          setChatMessages(res.data.chat || []);
         } catch (err) {
           toast({ title: "Error fetching snippet", status: "error" });
         }
@@ -292,7 +292,6 @@ const Editor = () => {
         sender: currentUser.firstName,
         text: chatInput,
       };
-      setChatMessages((prev) => [...prev, message]);
       socketRef.current.emit("send-chat-message", {
         roomId: snippetId,
         message,

@@ -74,12 +74,12 @@ h2 {
   padding: 15px;
   border-radius: 8px;
   min-height: 100px;
-  white-space: pre-wrap; /* To wrap long lines of output */
-  word-wrap: break-word; /* To break long words/errors */
+  white-space: pre-wrap;
+  word-wrap: break-word;
   font-family: "Courier New", Courier, monospace;
 }
 body {
-  background-color: #1a202c; /* Chakra's gray.800 */
+  background-color: #1a202c;
   background-image: radial-gradient(
     circle at 1px 1px,
     #2d3748 1px,
@@ -90,26 +90,25 @@ body {
 
 .resize-handle {
   width: 10px;
-  background-color: #1a202c; /* Chakra gray.800 */
+  background-color: #1a202c;
   cursor: col-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 1px solid #4a5568; /* Chakra gray.600 */
-  border-right: 1px solid #4a5568; /* Chakra gray.600 */
+  border-left: 1px solid #4a5568;
+  border-right: 1px solid #4a5568;
 }
 
 .resize-handle:hover {
-  background-color: #4a5568; /* Chakra gray.600 */
+  background-color: #4a5568;
 }
 
 body {
-  font-family: "Fira Code", monospace; /* More techy font */
-  background-color: #0d1117; /* Darker background */
+  font-family: "Fira Code", monospace;
+  background-color: #0d1117;
   color: #c5c6c7;
   margin: 0;
   padding: 20px;
-  /* Add a subtle animated grid background */
   background-image: linear-gradient(
       0deg,
       transparent 24%,
@@ -214,24 +213,24 @@ h2 {
   padding: 15px;
   border-radius: 8px;
   min-height: 100px;
-  white-space: pre-wrap; /* To wrap long lines of output */
-  word-wrap: break-word; /* To break long words/errors */
+  white-space: pre-wrap;
+  word-wrap: break-word;
   font-family: "Courier New", Courier, monospace;
 }
 
 .resize-handle {
   width: 10px;
-  background-color: #1a202c; /* Chakra gray.800 */
+  background-color: #1a202c;
   cursor: col-resize;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 1px solid #4a5568; /* Chakra gray.600 */
-  border-right: 1px solid #4a5568; /* Chakra gray.600 */
+  border-left: 1px solid #4a5568;
+  border-right: 1px solid #4a5568;
 }
 
 .resize-handle:hover {
-  background-color: #4a5568; /* Chakra gray.600 */
+  background-color: #4a5568;
 }
 
 .glitch {
@@ -282,7 +281,6 @@ h2 {
   }
 }
 
-/* Animated Gradient for Navbar */
 .animated-gradient {
   background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e);
   background-size: 400% 400%;
@@ -301,7 +299,6 @@ h2 {
   }
 }
 
-/* Hacker Text Effect */
 .hacker-text {
   position: relative;
   color: #39ff14;
@@ -330,21 +327,19 @@ h2 {
 }
 
 .glass-card {
-  background: rgba(45, 47, 51, 0.6); /* Semi-transparent background */
+  background: rgba(45, 47, 51, 0.6);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
 }
 
-/* Glowing borders for inputs */
 input:focus,
 textarea:focus {
   border-color: #39ff14 !important;
   box-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14 !important;
 }
 
-/* Scan line effect */
 body::after {
   content: " ";
   display: block;
@@ -373,7 +368,6 @@ body::after {
   }
 }
 
-/* Pulsating glow for navbar title */
 .hacker-text {
   animation: pulse-glow 2s infinite ease-in-out alternate;
 }
@@ -390,8 +384,8 @@ body::after {
 .animated-border-box {
   position: relative;
   overflow: hidden;
-  padding: 2px; /* Controls the thickness of the border */
-  border-radius: 12px; /* Match the inner card's radius + padding */
+  padding: 2px;
+  border-radius: 12px;
 }
 
 .animated-border-box::before {
@@ -415,16 +409,14 @@ body::after {
   }
 }
 
-/* Ensure card content is above the animated border and has no extra background */
 .animated-border-box > .glass-card {
   position: relative;
   z-index: 1;
-  background: #171923; /* Darker than the body for contrast */
+  background: #171923;
   margin: 0;
   width: 100%;
 }
 
-/* Blinking cursor for typing effect */
 .blinking-cursor {
   font-weight: bold;
   animation: blink 1s step-end infinite;

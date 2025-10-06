@@ -56,7 +56,6 @@ const Signup = () => {
     }
   };
 
-  // Placeholder functions for social logins
   const handleGoogleLogin = () => {
     toast({
       title: "Coming Soon!",

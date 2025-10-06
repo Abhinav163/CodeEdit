@@ -2,10 +2,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const Snippet = require("../models/Snippet");
-const User = require("../models/User"); // Ensure this import is present
-
-// @route   POST /api/snippets
-// @desc    Save a new code snippet
+const User = require("../models/User");
 router.post("/", auth, async (req, res) => {
   const { title, language, code } = req.body;
   try {
@@ -23,8 +20,6 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/snippets/user
-// @desc    Get all snippets created by the logged-in user
 router.get("/user", auth, async (req, res) => {
   try {
     const snippets = await Snippet.find({ user: req.user.id }).sort({
@@ -37,8 +32,6 @@ router.get("/user", auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/snippets/shared
-// @desc    Get all snippets shared with the logged-in user
 router.get("/shared", auth, async (req, res) => {
   try {
     const snippets = await Snippet.find({ sharedWith: req.user.id }).sort({
@@ -51,8 +44,6 @@ router.get("/shared", auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/snippets/:id
-// @desc    Get a single snippet by ID
 router.get("/:id", auth, async (req, res) => {
   try {
     const snippet = await Snippet.findById(req.params.id);
@@ -77,8 +68,6 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-// @route   PUT /api/snippets/:id
-// @desc    Update a code snippet
 router.put("/:id", auth, async (req, res) => {
   const { code } = req.body;
   try {
@@ -88,7 +77,6 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Snippet not found" });
     }
 
-    // Prevent edits if the snippet is read-only
     if (snippet.readOnly) {
       return res.status(403).json({ msg: "This snippet is read-only." });
     }
@@ -112,8 +100,6 @@ router.put("/:id", auth, async (req, res) => {
   }
 });
 
-// @route   PATCH /api/snippets/:id/share
-// @desc    Make a snippet public and add collaborators
 router.patch("/:id/share", auth, async (req, res) => {
   const { emails, readOnly } = req.body;
 
@@ -143,7 +129,7 @@ router.patch("/:id/share", auth, async (req, res) => {
     }
 
     snippet.isPublic = true;
-    snippet.readOnly = !!readOnly; // Set read-only status
+    snippet.readOnly = !!readOnly;
     await snippet.save();
 
     res.json({ msg: "Snippet is now public and shareable", snippet });
@@ -153,8 +139,6 @@ router.patch("/:id/share", auth, async (req, res) => {
   }
 });
 
-// @route   DELETE /api/snippets/:id
-// @desc    Delete a code snippet
 router.delete("/:id", auth, async (req, res) => {
   try {
     let snippet = await Snippet.findById(req.params.id);
