@@ -316,7 +316,7 @@ const Editor = () => {
         const token = localStorage.getItem("token");
         try {
           await axios.put(
-            `https.../api/snippets/${snippetId}`,
+            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
             { code: newCode },
             { headers: { "x-auth-token": token } }
           );
@@ -325,6 +325,7 @@ const Editor = () => {
         }
       }
     }, 1000),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [snippetId]
   );
 
