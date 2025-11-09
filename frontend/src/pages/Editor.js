@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import CodeMirror from "@uiw/react-codemirror";
-import { cpp, cppLanguage } from "@codemirror/lang-cpp";
+import { cpp } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
 import { javascript } from "@codemirror/lang-javascript";
 import { tokyoNight } from "@uiw/codemirror-theme-tokyo-night";
@@ -316,7 +316,7 @@ const Editor = () => {
         const token = localStorage.getItem("token");
         try {
           await axios.put(
-            `https://codeedit-backend.onrender.com/api/snippets/${snippetId}`,
+            `https.../api/snippets/${snippetId}`,
             { code: newCode },
             { headers: { "x-auth-token": token } }
           );
