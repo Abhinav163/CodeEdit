@@ -143,12 +143,24 @@ const cppKeywords = [
   "#include",
 ].map((k) => ({ label: k, type: "keyword" }));
 
-const DEFAULT_CODE = `#include <iostream>
+const boilerplateCode = {
+  cpp: `#include <iostream>
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
     return 0;
-}`;
+}`,
+  python: `def main():
+    print("Hello, World!")
+
+if __name__ == "__main__":
+    main()`,
+  javascript: `function main() {
+    console.log("Hello, World!");
+}
+
+main();`,
+};
 
 const languageExtensions = {
   cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
@@ -162,7 +174,7 @@ const Editor = () => {
   const socketRef = useRef(null);
   const isRemoteChange = useRef(false);
 
-  const [code, setCode] = useState(DEFAULT_CODE);
+  const [code, setCode] = useState("");
   const [language, setLanguage] = useState("cpp");
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
@@ -225,9 +237,10 @@ const Editor = () => {
       };
       fetchSnippet();
     } else {
+      const savedLanguage = localStorage.getItem("editorLanguage") || "cpp";
       const savedCode = localStorage.getItem("editorCode");
-      setCode(savedCode !== null ? savedCode : DEFAULT_CODE);
-      setLanguage(localStorage.getItem("editorLanguage") || "cpp");
+      setLanguage(savedLanguage);
+      setCode(savedCode !== null ? savedCode : boilerplateCode[savedLanguage]);
       setInput(localStorage.getItem("editorInput") || "");
     }
 
@@ -328,6 +341,14 @@ const Editor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [snippetId]
   );
+
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    // The select is disabled when snippetId is present,
+    // so this will only run for new/local sessions.
+    setCode(boilerplateCode[newLanguage]);
+  };
 
   const onChange = useCallback(
     (value) => {
@@ -438,7 +459,7 @@ const Editor = () => {
         <Select
           w="150px"
           value={language}
-          onChange={(e) => setLanguage(e.target.value)}
+          onChange={handleLanguageChange}
           isDisabled={!!snippetId}
         >
           <option value="cpp">C++</option>
