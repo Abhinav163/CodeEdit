@@ -8,7 +8,7 @@ const { spawn } = require("child_process");
 const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
-const Snippet = require("./models/Snippet");
+const Project = require("./models/Project"); // Changed from Snippet
 const auth = require("./middleware/auth");
 
 mongoose
@@ -33,7 +33,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(bodyParser.json());
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/snippets", require("./routes/snippets"));
+app.use("/api/projects", require("./routes/projects")); // Renamed from /api/snippets
 const roomUsers = {};
 
 io.on("connection", (socket) => {
@@ -52,16 +52,18 @@ io.on("connection", (socket) => {
     console.log(`User ${socket.id} (${user?.firstName}) joined room ${roomId}`);
   });
 
+  // Updated to handle specific file changes
   socket.on("code-change", (data) => {
-    const { roomId, newCode } = data;
-    socket.to(roomId).emit("code-update", newCode);
+    const { roomId, fileName, newCode } = data;
+    socket.to(roomId).emit("code-update", { fileName, newCode });
   });
 
   socket.on("send-chat-message", async (data) => {
     const { roomId, message } = data;
     socket.to(roomId).emit("receive-chat-message", message);
     try {
-      await Snippet.findByIdAndUpdate(roomId, {
+      // Use Project model
+      await Project.findByIdAndUpdate(roomId, {
         $push: { chat: { sender: message.sender, text: message.text } },
       });
     } catch (error) {
@@ -86,6 +88,7 @@ io.on("connection", (socket) => {
   });
 });
 
+// '/run' endpoint remains for C++, Python, JS execution
 app.post("/run", auth, (req, res) => {
   const { language = "javascript", code, input = "" } = req.body;
 

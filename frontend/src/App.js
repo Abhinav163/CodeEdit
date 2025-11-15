@@ -22,7 +22,7 @@ import {
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Editor from "./pages/Editor";
-import Profile from "./pages/Profile";
+import Projects from "./pages/Projects"; // Renamed from Profile
 import "./App.css";
 import { jwtDecode } from "jwt-decode";
 
@@ -120,9 +120,10 @@ const Navbar = () => {
           )
         ) : (
           <Flex align="center">
-            <Link as={RouterLink} to="/profile">
+            {/* Link to Projects page */}
+            <Link as={RouterLink} to="/projects">
               <Button variant="ghost" mr={4} _hover={{ bg: "transparent" }}>
-                My Snippets
+                My Files
               </Button>
             </Link>
             <Menu>
@@ -211,19 +212,21 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Updated route for projects */}
           <Route
-            path="/editor/:id"
+            path="/project/:id"
             element={
               <PrivateRoute>
                 <Editor />
               </PrivateRoute>
             }
           />
+          {/* Updated route for projects list */}
           <Route
-            path="/profile"
+            path="/projects"
             element={
               <PrivateRoute>
-                <Profile />
+                <Projects />
               </PrivateRoute>
             }
           />

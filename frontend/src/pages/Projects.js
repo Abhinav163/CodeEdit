@@ -39,22 +39,37 @@ import {
   TabPanels,
   TabPanel,
   Checkbox,
+  Tag,
+  HStack,
 } from "@chakra-ui/react";
-import { FaPlus, FaTrash, FaClipboard } from "react-icons/fa";
+import {
+  FaPlus,
+  FaTrash,
+  FaClipboard,
+  FaFolder,
+  FaFileCode,
+} from "react-icons/fa";
 import axios from "axios";
 import { Link as RouterLink } from "react-router-dom";
 import { SiCplusplus, SiPython, SiJavascript } from "react-icons/si";
 
-const languageMap = {
-  cpp: { icon: SiCplusplus, color: "blue.400" },
-  python: { icon: SiPython, color: "yellow.400" },
-  javascript: { icon: SiJavascript, color: "yellow.300" },
+// Simple icon mapping for card
+const languageIconMap = {
+  cpp: SiCplusplus,
+  python: SiPython,
+  javascript: SiJavascript,
+  html: FaFileCode,
+  css: FaFileCode,
 };
 
-const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
-  const langInfo = languageMap[snippet.language] || {};
+const ProjectCard = ({ project, onShareClick, onDeleteClick }) => {
+  const isWebProject = project.projectType === "web";
+  const mainFile =
+    project.files.find((f) => f.fileName === "index.html") || project.files[0];
+  const langInfo = languageIconMap[mainFile.language] || FaFileCode;
+
   return (
-    <Box className="animated-border-box" key={snippet._id}>
+    <Box className="animated-border-box" key={project._id}>
       <Card
         bg="gray.800"
         boxShadow="lg"
@@ -64,8 +79,12 @@ const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
       >
         <CardHeader>
           <Flex align="center" justify="space-between">
-            <Heading size="md">{snippet.title}</Heading>
-            <Icon as={langInfo.icon} color={langInfo.color} boxSize={6} />
+            <Heading size="md">{project.title}</Heading>
+            <Icon
+              as={isWebProject ? FaFolder : langInfo}
+              color="teal.300"
+              boxSize={6}
+            />
           </Flex>
         </CardHeader>
         <CardBody>
@@ -77,14 +96,26 @@ const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
             borderRadius="md"
             fontFamily="mono"
           >
-            {snippet.code}
+            {mainFile.code || "// Empty file"}
           </Text>
+          <HStack mt={2} spacing={2} overflowX="auto">
+            {project.files.map((file) => (
+              <Tag
+                size="sm"
+                key={file.fileName}
+                variant="subtle"
+                colorScheme="gray"
+              >
+                {file.fileName}
+              </Tag>
+            ))}
+          </HStack>
         </CardBody>
         <CardFooter>
           <ButtonGroup spacing="2">
             <Button
               as={RouterLink}
-              to={`/editor/${snippet._id}`}
+              to={`/project/${project._id}`} // Updated route
               variant="solid"
               colorScheme="teal"
             >
@@ -93,14 +124,14 @@ const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
             <Button
               variant="solid"
               colorScheme="blue"
-              onClick={() => onShareClick(snippet)}
+              onClick={() => onShareClick(project)}
             >
               Share
             </Button>
             <Button
               variant="ghost"
               colorScheme="red"
-              onClick={() => onDeleteClick(snippet._id)}
+              onClick={() => onDeleteClick(project._id)}
             >
               Delete
             </Button>
@@ -111,12 +142,20 @@ const SnippetCard = ({ snippet, onShareClick, onDeleteClick }) => {
   );
 };
 
-const Profile = () => {
+const Projects = () => {
+  // State for all projects
+  const [myProjects, setMyProjects] = useState([]);
+  const [sharedProjects, setSharedProjects] = useState([]);
+
+  // Derived state for tabs
+  const [myFolders, setMyFolders] = useState([]);
   const [mySnippets, setMySnippets] = useState([]);
+  const [sharedFolders, setSharedFolders] = useState([]);
   const [sharedSnippets, setSharedSnippets] = useState([]);
+
   const [loading, setLoading] = useState(true);
-  const [snippetToDelete, setSnippetToDelete] = useState(null);
-  const [snippetToShare, setSnippetToShare] = useState(null);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [projectToShare, setProjectToShare] = useState(null);
   const [collaboratorEmails, setCollaboratorEmails] = useState([""]);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const {
@@ -127,89 +166,92 @@ const Profile = () => {
   const {
     isOpen: isShareOpen,
     onOpen: onShareOpen,
-    onClose: onShareClose,
+    onClose: onShareClose, // Corrected: use onShareClose
   } = useDisclosure();
   const cancelRef = useRef();
   const toast = useToast();
 
+  // Function to filter projects into categories
+  const filterProjects = (projects, isShared = false) => {
+    const folders = projects.filter((p) => p.projectType === "web");
+    const snippets = projects.filter((p) => p.projectType === "code");
+    if (isShared) {
+      setSharedFolders(folders);
+      setSharedSnippets(snippets);
+    } else {
+      setMyFolders(folders);
+      setMySnippets(snippets);
+    }
+  };
+
   useEffect(() => {
-    const fetchSnippets = async () => {
+    const fetchProjects = async () => {
       const token = localStorage.getItem("token");
       setLoading(true);
       try {
-        const [mySnippetsRes, sharedSnippetsRes] = await Promise.all([
-          axios.get("https://codeedit-backend.onrender.com/api/snippets/user", {
+        const [myProjectsRes, sharedProjectsRes] = await Promise.all([
+          axios.get("https://codeedit-backend.onrender.com/api/projects/user", {
             headers: { "x-auth-token": token },
           }),
           axios.get(
-            "https://codeedit-backend.onrender.com/api/snippets/shared",
+            "https://codeedit-backend.onrender.com/api/projects/shared",
             {
               headers: { "x-auth-token": token },
             }
           ),
         ]);
-        setMySnippets(mySnippetsRes.data);
-        setSharedSnippets(sharedSnippetsRes.data);
+        setMyProjects(myProjectsRes.data);
+        setSharedProjects(sharedProjectsRes.data);
+        filterProjects(myProjectsRes.data, false);
+        filterProjects(sharedProjectsRes.data, true);
       } catch (err) {
         toast({
           title: "Error",
-          description: "Could not fetch snippets.",
+          description: "Could not fetch projects.",
           status: "error",
         });
       }
       setLoading(false);
     };
-    fetchSnippets();
+    fetchProjects();
   }, [toast]);
 
   const openDeleteDialog = (id) => {
-    setSnippetToDelete(id);
+    setProjectToDelete(id);
     onDeleteOpen();
   };
 
-  const handleShareClick = (snippet) => {
-    setSnippetToShare(snippet);
-    setIsReadOnly(snippet.readOnly || false);
+  const handleShareClick = (project) => {
+    setProjectToShare(project);
+    setIsReadOnly(project.readOnly || false);
     setCollaboratorEmails([""]);
     onShareOpen();
   };
 
   const handleShare = async () => {
-    if (!snippetToShare) return;
-
+    if (!projectToShare) return;
     const token = localStorage.getItem("token");
     try {
       await axios.patch(
-        `https://codeedit-backend.onrender.com/api/snippets/${snippetToShare._id}/share`,
+        `https://codeedit-backend.onrender.com/api/projects/${projectToShare._id}/share`,
         {
           emails: collaboratorEmails.filter((email) => email),
           readOnly: isReadOnly,
         },
         { headers: { "x-auth-token": token } }
       );
-
-      const url = `${window.location.origin}/editor/${snippetToShare._id}`;
+      const url = `${window.location.origin}/project/${projectToShare._id}`;
       navigator.clipboard.writeText(url);
-
       toast({
         title: "Link Copied!",
         description: "Collaboration link has been copied and invites sent.",
         status: "success",
-        duration: 3000,
-        isClosable: true,
       });
-
       onShareClose();
       setCollaboratorEmails([""]);
-      setSnippetToShare(null);
+      setProjectToShare(null);
     } catch (err) {
-      toast({
-        title: "Sharing Error",
-        description: "Could not share the snippet.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      toast({ title: "Sharing Error", status: "error" });
     }
   };
 
@@ -217,26 +259,21 @@ const Profile = () => {
     const token = localStorage.getItem("token");
     try {
       await axios.delete(
-        `https://codeedit-backend.onrender.com/api/snippets/${snippetToDelete}`,
+        `https://codeedit-backend.onrender.com/api/projects/${projectToDelete}`,
         {
           headers: { "x-auth-token": token },
         }
       );
-      setMySnippets(mySnippets.filter((s) => s._id !== snippetToDelete));
-      toast({
-        title: "Success",
-        description: "Snippet deleted successfully.",
-        status: "success",
-      });
+      // Refilter after deletion
+      const newMyProjects = myProjects.filter((p) => p._id !== projectToDelete);
+      setMyProjects(newMyProjects);
+      filterProjects(newMyProjects, false);
+      toast({ title: "Success", description: "Project deleted." });
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Could not delete snippet.",
-        status: "error",
-      });
+      toast({ title: "Error", description: "Could not delete project." });
     }
     onDeleteClose();
-    setSnippetToDelete(null);
+    setProjectToDelete(null);
   };
 
   const handleCollaboratorEmailChange = (index, value) => {
@@ -254,6 +291,24 @@ const Profile = () => {
     setCollaboratorEmails(newEmails);
   };
 
+  const renderProjectGrid = (projects, typeName) => {
+    if (projects.length > 0) {
+      return (
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+          {projects.map((project) => (
+            <ProjectCard
+              key={project._id}
+              project={project}
+              onShareClick={handleShareClick}
+              onDeleteClick={openDeleteDialog}
+            />
+          ))}
+        </SimpleGrid>
+      );
+    }
+    return <Text>You don't have any {typeName} yet.</Text>;
+  };
+
   if (loading) {
     return (
       <Flex justify="center" align="center" height="50vh">
@@ -265,52 +320,54 @@ const Profile = () => {
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={6}>
-        <Heading>Snippets</Heading>
+        <Heading>My Files</Heading>
         <Button as={RouterLink} to="/" colorScheme="teal">
           Create New
         </Button>
       </Flex>
 
+      {/* Top Level Tabs: Folders / Snippets */}
       <Tabs isFitted variant="enclosed">
         <TabList mb="1em">
-          <Tab>My Snippets</Tab>
-          <Tab>Shared With Me</Tab>
+          <Tab>Folders (Web Projects)</Tab>
+          <Tab>Snippets (Code Files)</Tab>
         </TabList>
         <TabPanels>
+          {/* --- FOLDERS PANEL --- */}
           <TabPanel>
-            {mySnippets.length > 0 ? (
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {mySnippets.map((snippet) => (
-                  <SnippetCard
-                    key={snippet._id}
-                    snippet={snippet}
-                    onShareClick={handleShareClick}
-                    onDeleteClick={openDeleteDialog}
-                  />
-                ))}
-              </SimpleGrid>
-            ) : (
-              <Text>You haven't created any snippets yet.</Text>
-            )}
+            <Tabs isFitted variant="soft-rounded" colorScheme="teal">
+              <TabList mb="1em">
+                <Tab>My Folders</Tab>
+                <Tab>Shared Folders</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>{renderProjectGrid(myFolders, "folders")}</TabPanel>
+                <TabPanel>
+                  {renderProjectGrid(sharedFolders, "shared folders")}
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </TabPanel>
+
+          {/* --- SNIPPETS PANEL --- */}
           <TabPanel>
-            {sharedSnippets.length > 0 ? (
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {sharedSnippets.map((snippet) => (
-                  <SnippetCard
-                    key={snippet._id}
-                    snippet={snippet}
-                    onShareClick={handleShareClick}
-                    onDeleteClick={openDeleteDialog}
-                  />
-                ))}
-              </SimpleGrid>
-            ) : (
-              <Text>No snippets have been shared with you yet.</Text>
-            )}
+            <Tabs isFitted variant="soft-rounded" colorScheme="blue">
+              <TabList mb="1em">
+                <Tab>My Snippets</Tab>
+                <Tab>Shared Snippets</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>{renderProjectGrid(mySnippets, "snippets")}</TabPanel>
+                <TabPanel>
+                  {renderProjectGrid(sharedSnippets, "shared snippets")}
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* --- Dialogs --- */}
       <AlertDialog
         isOpen={isDeleteOpen}
         leastDestructiveRef={cancelRef}
@@ -318,7 +375,7 @@ const Profile = () => {
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
-            <AlertDialogHeader>Delete Snippet</AlertDialogHeader>
+            <AlertDialogHeader>Delete Project</AlertDialogHeader>
             <AlertDialogBody>
               Are you sure? You can't undo this action.
             </AlertDialogBody>
@@ -333,10 +390,11 @@ const Profile = () => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
       <Modal isOpen={isShareOpen} onClose={onShareClose} isCentered>
         <ModalOverlay />
         <ModalContent bg="gray.800">
-          <ModalHeader>Share Snippet</ModalHeader>
+          <ModalHeader>Share Project</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <Stack spacing={4}>
@@ -346,7 +404,7 @@ const Profile = () => {
                 </Text>
                 <InputGroup>
                   <Input
-                    value={`${window.location.origin}/editor/${snippetToShare?._id}`}
+                    value={`${window.location.origin}/project/${projectToShare?._id}`}
                     isReadOnly
                     bg="gray.700"
                   />
@@ -356,7 +414,7 @@ const Profile = () => {
                       icon={<FaClipboard />}
                       onClick={() => {
                         navigator.clipboard.writeText(
-                          `${window.location.origin}/editor/${snippetToShare?._id}`
+                          `${window.location.origin}/project/${projectToShare?._id}`
                         );
                         toast({
                           title: "Link Copied!",
@@ -426,4 +484,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Projects;

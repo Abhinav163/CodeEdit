@@ -1,12 +1,8 @@
 const mongoose = require("mongoose");
 
-const SnippetSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  title: {
+// Sub-schema for individual files within a project
+const FileSchema = new mongoose.Schema({
+  fileName: {
     type: String,
     required: true,
     trim: true,
@@ -17,8 +13,30 @@ const SnippetSchema = new mongoose.Schema({
   },
   code: {
     type: String,
+    default: "",
+  },
+});
+
+const ProjectSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true,
   },
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  // 'web' for multi-file web projects, 'code' for single-file snippets
+  projectType: {
+    type: String,
+    enum: ["web", "code"],
+    required: true,
+    default: "code",
+  },
+  // Replaced 'code' and 'language' with 'files' array
+  files: [FileSchema],
   isPublic: {
     type: Boolean,
     default: false,
@@ -46,4 +64,4 @@ const SnippetSchema = new mongoose.Schema({
   ],
 });
 
-module.exports = mongoose.model("Snippet", SnippetSchema);
+module.exports = mongoose.model("Project", ProjectSchema);
