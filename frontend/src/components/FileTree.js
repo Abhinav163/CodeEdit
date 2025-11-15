@@ -16,7 +16,6 @@ const FileTree = ({ files, activeFile, onFileSelect }) => {
     <Box h="100%" w="100%" bg="gray.900" p={2} borderRadius="md">
       <Flex justify="space-between" align="center" mb={2} px={2}>
         <Heading size="sm">Files</Heading>
-        {/* Add file functionality can be added here */}
       </Flex>
       <VStack align="stretch" spacing={1}>
         {files.map((file) => {

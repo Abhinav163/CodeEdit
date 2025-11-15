@@ -53,7 +53,6 @@ import axios from "axios";
 import { Link as RouterLink } from "react-router-dom";
 import { SiCplusplus, SiPython, SiJavascript } from "react-icons/si";
 
-// Simple icon mapping for card
 const languageIconMap = {
   cpp: SiCplusplus,
   python: SiPython,
@@ -115,7 +114,7 @@ const ProjectCard = ({ project, onShareClick, onDeleteClick }) => {
           <ButtonGroup spacing="2">
             <Button
               as={RouterLink}
-              to={`/project/${project._id}`} // Updated route
+              to={`/project/${project._id}`}
               variant="solid"
               colorScheme="teal"
             >
@@ -143,11 +142,9 @@ const ProjectCard = ({ project, onShareClick, onDeleteClick }) => {
 };
 
 const Projects = () => {
-  // State for all projects
   const [myProjects, setMyProjects] = useState([]);
   const [sharedProjects, setSharedProjects] = useState([]);
 
-  // Derived state for tabs
   const [myFolders, setMyFolders] = useState([]);
   const [mySnippets, setMySnippets] = useState([]);
   const [sharedFolders, setSharedFolders] = useState([]);
@@ -166,12 +163,11 @@ const Projects = () => {
   const {
     isOpen: isShareOpen,
     onOpen: onShareOpen,
-    onClose: onShareClose, // Corrected: use onShareClose
+    onClose: onShareClose,
   } = useDisclosure();
   const cancelRef = useRef();
   const toast = useToast();
 
-  // Function to filter projects into categories
   const filterProjects = (projects, isShared = false) => {
     const folders = projects.filter((p) => p.projectType === "web");
     const snippets = projects.filter((p) => p.projectType === "code");
@@ -264,7 +260,6 @@ const Projects = () => {
           headers: { "x-auth-token": token },
         }
       );
-      // Refilter after deletion
       const newMyProjects = myProjects.filter((p) => p._id !== projectToDelete);
       setMyProjects(newMyProjects);
       filterProjects(newMyProjects, false);
@@ -326,14 +321,12 @@ const Projects = () => {
         </Button>
       </Flex>
 
-      {/* Top Level Tabs: Folders / Snippets */}
       <Tabs isFitted variant="enclosed">
         <TabList mb="1em">
           <Tab>Folders (Web Projects)</Tab>
           <Tab>Snippets (Code Files)</Tab>
         </TabList>
         <TabPanels>
-          {/* --- FOLDERS PANEL --- */}
           <TabPanel>
             <Tabs isFitted variant="soft-rounded" colorScheme="teal">
               <TabList mb="1em">
@@ -349,7 +342,6 @@ const Projects = () => {
             </Tabs>
           </TabPanel>
 
-          {/* --- SNIPPETS PANEL --- */}
           <TabPanel>
             <Tabs isFitted variant="soft-rounded" colorScheme="blue">
               <TabList mb="1em">
@@ -367,7 +359,6 @@ const Projects = () => {
         </TabPanels>
       </Tabs>
 
-      {/* --- Dialogs --- */}
       <AlertDialog
         isOpen={isDeleteOpen}
         leastDestructiveRef={cancelRef}

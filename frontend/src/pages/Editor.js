@@ -13,8 +13,8 @@ import CodeMirror from "@uiw/react-codemirror";
 import { cpp } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
 import { javascript } from "@codemirror/lang-javascript";
-import { html } from "@codemirror/lang-html"; // <-- Added
-import { css } from "@codemirror/lang-css"; // <-- Added
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
 import { tokyoNight } from "@uiw/codemirror-theme-tokyo-night";
 import { autocompletion, completeFromList } from "@codemirror/autocomplete";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -54,7 +54,6 @@ import {
 import { FaTrash, FaPaperPlane, FaCode, FaGlobe } from "react-icons/fa";
 import FileTree from "../components/FileTree";
 
-// Keywords from your original file
 const cppKeywords = [
   "alignas",
   "alignof",
@@ -160,7 +159,6 @@ const cppKeywords = [
   "#include",
 ].map((k) => ({ label: k, type: "keyword" }));
 
-// Default files for a new web project
 const defaultWebFiles = [
   {
     fileName: "index.html",
@@ -179,14 +177,12 @@ const defaultWebFiles = [
   },
 ];
 
-// Boilerplate for single code snippets
 const boilerplateCode = {
   cpp: `#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}`,
   python: `def main():\n    print("Hello, World!")\n\nif __name__ == "__main__":\n    main()`,
   javascript: `console.log("Hello, World!");`,
 };
 
-// Add html and css
 const languageExtensions = {
   cpp: [cpp(), autocompletion({ override: [completeFromList(cppKeywords)] })],
   python: [python(), autocompletion()],
@@ -195,7 +191,6 @@ const languageExtensions = {
   css: [css(), autocompletion()],
 };
 
-// --- New Component for Choosing Project Type ---
 const NewProjectChooser = ({ onSelect }) => {
   const [language, setLanguage] = useState("javascript");
 
@@ -265,11 +260,11 @@ const NewProjectChooser = ({ onSelect }) => {
               mt={4}
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              onClick={(e) => e.stopPropagation()} // Prevent card click
+              onClick={(e) => e.stopPropagation()}
             >
-              <option value="javascript">JavaScript</option>
-              <option value="python">Python</option>
               <option value="cpp">C++</option>
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
             </Select>
             <Button
               colorScheme="blue"
@@ -287,7 +282,6 @@ const NewProjectChooser = ({ onSelect }) => {
     </Flex>
   );
 };
-// --- End New Component ---
 
 const Editor = () => {
   const { id: projectId } = useParams();
@@ -295,11 +289,9 @@ const Editor = () => {
   const socketRef = useRef(null);
   const isRemoteChange = useRef(false);
 
-  // --- State ---
-  const [projectType, setProjectType] = useState(null); // 'web' or 'code'
+  const [projectType, setProjectType] = useState(null);
   const [files, setFiles] = useState([]);
   const [activeFile, setActiveFile] = useState(null);
-  // ---
 
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
@@ -344,7 +336,6 @@ const Editor = () => {
     const socket = socketRef.current;
 
     if (projectId) {
-      // --- Fetching an existing project ---
       const userPayload = {
         id: currentUser.id,
         firstName: currentUser.firstName,
@@ -363,21 +354,19 @@ const Editor = () => {
           );
           isRemoteChange.current = true;
           setFiles(res.data.files);
-          setProjectType(res.data.projectType); // Set the mode
+          setProjectType(res.data.projectType);
           setActiveFile(res.data.files[0].fileName);
           setIsReadOnly(res.data.readOnly);
           setChatMessages(res.data.chat || []);
         } catch (err) {
           toast({ title: "Error fetching project", status: "error" });
-          navigate("/"); // If project not found, go home
+          navigate("/");
         }
         setIsLoading(false);
       };
       fetchProject();
     } else {
-      // --- Creating a new project ---
-      // State is handled by the NewProjectChooser
-      setProjectType(null); // Show the chooser
+      setProjectType(null);
       setFiles([]);
     }
 
@@ -403,7 +392,6 @@ const Editor = () => {
     };
   }, [projectId, toast, currentUser, navigate]);
 
-  // --- Live Preview Logic ---
   const srcDoc = useMemo(() => {
     if (projectType !== "web" || !files.length) return "";
 
@@ -438,7 +426,6 @@ const Editor = () => {
 
     return html;
   }, [files, projectType]);
-  // --- End Live Preview Logic ---
 
   useEffect(() => {
     if (isLoading || !output) {
@@ -494,7 +481,6 @@ const Editor = () => {
         }
       }
     }, 1000),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [projectId]
   );
 
@@ -569,7 +555,7 @@ const Editor = () => {
     try {
       const res = await axios.post(
         "https://codeedit-backend.onrender.com/api/projects",
-        { title, files, projectType }, // Send all file states and project type
+        { title, files, projectType },
         { headers: { "x-auth-token": token } }
       );
       toast({
@@ -579,7 +565,7 @@ const Editor = () => {
       });
       onClose();
       setTitle("");
-      navigate(`/project/${res.data._id}`); // Navigate to new project URL
+      navigate(`/project/${res.data._id}`);
     } catch (err) {
       toast({
         title: "Error",
@@ -614,8 +600,6 @@ const Editor = () => {
     );
   };
 
-  // --- Render Logic ---
-
   if (!projectId && !projectType) {
     return <NewProjectChooser onSelect={handleNewProjectSelect} />;
   }
@@ -628,14 +612,12 @@ const Editor = () => {
     );
   }
 
-  // Determine which panels to show
   const isWebProject = projectType === "web";
 
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={4}>
         <Box>
-          {/* Active users avatar group */}
           {projectId && (
             <Flex align="center">
               <Text mr={2}>Active users:</Text>
@@ -656,7 +638,6 @@ const Editor = () => {
               Leave Session
             </Button>
           )}
-          {/* Only show "Save" button for new, unsaved projects */}
           {!projectId && (
             <Button colorScheme="blue" onClick={onOpen} mr={4}>
               Save Project
@@ -681,7 +662,6 @@ const Editor = () => {
         direction="horizontal"
         style={{ height: "calc(100vh - 250px)", minHeight: "400px" }}
       >
-        {/* --- File Tree Panel (Conditional) --- */}
         {isWebProject && (
           <>
             <Panel defaultSize={15} minSize={10}>
@@ -694,7 +674,6 @@ const Editor = () => {
             <PanelResizeHandle className="resize-handle" />
           </>
         )}
-        {/* --- End File Tree Panel --- */}
 
         <Panel defaultSize={isWebProject ? 50 : 60} minSize={30}>
           <Flex direction="column" h="100%" gap={4}>
@@ -735,7 +714,6 @@ const Editor = () => {
 
         <Panel defaultSize={isWebProject ? 35 : 40} minSize={20}>
           <Flex direction="column" h="100%">
-            {/* --- Tabbed Output/Preview/Chat --- */}
             <Tabs h="100%" display="flex" flexDirection="column">
               <TabList>
                 {isWebProject && <Tab>Preview</Tab>}
@@ -846,7 +824,6 @@ const Editor = () => {
                 )}
               </TabPanels>
             </Tabs>
-            {/* --- End Tabbed Output --- */}
           </Flex>
         </Panel>
       </PanelGroup>

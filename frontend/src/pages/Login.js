@@ -43,7 +43,7 @@ const Login = () => {
       localStorage.setItem("lastActivity", Date.now().toString());
       navigate("/");
     } catch (err) {
-      setIsLoading(false); // <-- SET LOADING FALSE ON ERROR
+      setIsLoading(false);
       toast({
         title: "Login Failed",
         description: "Invalid credentials. Please try again.",

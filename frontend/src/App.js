@@ -22,7 +22,7 @@ import {
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Editor from "./pages/Editor";
-import Projects from "./pages/Projects"; // Renamed from Profile
+import Projects from "./pages/Projects";
 import "./App.css";
 import { jwtDecode } from "jwt-decode";
 
@@ -91,13 +91,18 @@ const Navbar = () => {
     >
       <Flex align="center" mr={5}>
         <Heading
-          as={RouterLink}
-          to="/"
           size="lg"
           letterSpacing={"-.1rem"}
-          _hover={{ textDecoration: "none" }}
+          _hover={{ textDecoration: "none", cursor: "pointer" }}
           className="hacker-text"
           data-text="Code - Edit"
+          onClick={() => {
+            if (location.pathname !== "/") {
+              navigate("/");
+            } else {
+              window.location.assign("/");
+            }
+          }}
         >
           Code - Edit
         </Heading>
@@ -120,7 +125,6 @@ const Navbar = () => {
           )
         ) : (
           <Flex align="center">
-            {/* Link to Projects page */}
             <Link as={RouterLink} to="/projects">
               <Button variant="ghost" mr={4} _hover={{ bg: "transparent" }}>
                 My Files
@@ -212,7 +216,6 @@ function App() {
               </PrivateRoute>
             }
           />
-          {/* Updated route for projects */}
           <Route
             path="/project/:id"
             element={
@@ -221,7 +224,6 @@ function App() {
               </PrivateRoute>
             }
           />
-          {/* Updated route for projects list */}
           <Route
             path="/projects"
             element={

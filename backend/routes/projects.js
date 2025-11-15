@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const Project = require("../models/Project"); // Renamed from Snippet
+const Project = require("../models/Project");
 const User = require("../models/User");
 
-// Create a new project (either 'web' or 'code')
 router.post("/", auth, async (req, res) => {
-  const { title, files, projectType } = req.body; // Expect title, files array, and type
+  const { title, files, projectType } = req.body;
   try {
     const newProject = new Project({
       title,
@@ -22,7 +21,6 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// Get user's projects (both types)
 router.get("/user", auth, async (req, res) => {
   try {
     const projects = await Project.find({ user: req.user.id }).sort({
@@ -35,7 +33,6 @@ router.get("/user", auth, async (req, res) => {
   }
 });
 
-// Get projects (both types) shared with user
 router.get("/shared", auth, async (req, res) => {
   try {
     const projects = await Project.find({ sharedWith: req.user.id }).sort({
@@ -48,7 +45,6 @@ router.get("/shared", auth, async (req, res) => {
   }
 });
 
-// Get a specific project by ID
 router.get("/:id", auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -73,7 +69,6 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-// Update a specific file in a project
 router.put("/:id/file", auth, async (req, res) => {
   const { fileName, newCode } = req.body;
   try {
@@ -96,16 +91,14 @@ router.put("/:id/file", auth, async (req, res) => {
         .json({ msg: "Not authorized to update this project" });
     }
 
-    // Update the specific file's code
     await Project.updateOne(
       { _id: req.params.id, "files.fileName": fileName },
       { $set: { "files.$.code": newCode } }
     );
 
-    // Find the file to send back in response (for socket sync)
     const updatedFile = project.files.find((f) => f.fileName === fileName);
     if (updatedFile) {
-      updatedFile.code = newCode; // Manually update for the response
+      updatedFile.code = newCode;
     }
 
     res.json({ fileName, newCode });
@@ -115,7 +108,6 @@ router.put("/:id/file", auth, async (req, res) => {
   }
 });
 
-// Share a project
 router.patch("/:id/share", auth, async (req, res) => {
   const { emails, readOnly } = req.body;
   try {
@@ -154,7 +146,6 @@ router.patch("/:id/share", auth, async (req, res) => {
   }
 });
 
-// Delete a project
 router.delete("/:id", auth, async (req, res) => {
   try {
     let project = await Project.findById(req.params.id);

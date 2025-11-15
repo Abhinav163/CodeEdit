@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Sub-schema for individual files within a project
 const FileSchema = new mongoose.Schema({
   fileName: {
     type: String,
@@ -28,14 +27,12 @@ const ProjectSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  // 'web' for multi-file web projects, 'code' for single-file snippets
   projectType: {
     type: String,
     enum: ["web", "code"],
     required: true,
     default: "code",
   },
-  // Replaced 'code' and 'language' with 'files' array
   files: [FileSchema],
   isPublic: {
     type: Boolean,
