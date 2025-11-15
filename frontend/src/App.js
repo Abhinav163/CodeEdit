@@ -162,45 +162,6 @@ const Navbar = () => {
 };
 
 function App() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const LOGOUT_TIME_MS = 2 * 60 * 1000;
-
-    const checkInactivity = () => {
-      const lastActivity = localStorage.getItem("lastActivity");
-      if (lastActivity) {
-        const timeSinceLastActivity = Date.now() - parseInt(lastActivity, 10);
-        if (timeSinceLastActivity > LOGOUT_TIME_MS) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("lastActivity");
-          navigate("/login");
-        }
-      }
-    };
-
-    const updateActivityTimestamp = () => {
-      localStorage.setItem("lastActivity", Date.now().toString());
-    };
-
-    checkInactivity();
-
-    window.addEventListener("mousemove", updateActivityTimestamp);
-    window.addEventListener("keydown", updateActivityTimestamp);
-    window.addEventListener("scroll", updateActivityTimestamp);
-    window.addEventListener("click", updateActivityTimestamp);
-
-    const intervalId = setInterval(checkInactivity, 15000);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener("mousemove", updateActivityTimestamp);
-      window.removeEventListener("keydown", updateActivityTimestamp);
-      window.removeEventListener("scroll", updateActivityTimestamp);
-      window.removeEventListener("click", updateActivityTimestamp);
-    };
-  }, [navigate]);
-
   return (
     <>
       <Navbar />

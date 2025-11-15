@@ -45,7 +45,6 @@ const Signup = () => {
         formData
       );
       localStorage.setItem("token", res.data.token);
-      localStorage.setItem("lastActivity", Date.now().toString());
       navigate("/");
     } catch (err) {
       setIsLoading(false);
