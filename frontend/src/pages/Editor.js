@@ -230,6 +230,7 @@ const NewProjectChooser = ({ onSelect }) => {
             borderRadius="lg"
             className="glass-card"
             minH="250px"
+            h="100%"
           >
             <Icon as={FaGlobe} boxSize={16} color="teal.300" />
             <Heading size="lg" mt={4}>
