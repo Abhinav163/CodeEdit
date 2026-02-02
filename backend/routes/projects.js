@@ -93,7 +93,7 @@ router.put("/:id/file", auth, async (req, res) => {
 
     await Project.updateOne(
       { _id: req.params.id, "files.fileName": fileName },
-      { $set: { "files.$.code": newCode } }
+      { $set: { "files.$.code": newCode } },
     );
 
     const updatedFile = project.files.find((f) => f.fileName === fileName);
@@ -127,7 +127,7 @@ router.patch("/:id/share", auth, async (req, res) => {
 
       userIds.forEach((userId) => {
         const alreadyExists = project.sharedWith.some((id) =>
-          id.equals(userId)
+          id.equals(userId),
         );
         if (!alreadyExists) {
           project.sharedWith.push(userId);
@@ -161,6 +161,108 @@ router.delete("/:id", auth, async (req, res) => {
     await Project.findByIdAndDelete(req.params.id);
 
     res.json({ msg: "Project removed" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+// Add a new file or folder to a project
+router.post("/:id/file", auth, async (req, res) => {
+  const { fileName, path, language, isFolder } = req.body;
+  try {
+    let project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ msg: "Project not found" });
+    }
+
+    const isOwner = project.user.toString() === req.user.id;
+    const isShared = project.sharedWith.some((id) => id.equals(req.user.id));
+
+    if (!isOwner && !isShared) {
+      return res
+        .status(401)
+        .json({ msg: "Not authorized to modify this project" });
+    }
+
+    if (project.readOnly) {
+      return res.status(403).json({ msg: "This project is read-only." });
+    }
+
+    // Check if file/folder already exists at this path
+    const exists = project.files.some(
+      (f) => f.fileName === fileName && f.path === path,
+    );
+    if (exists) {
+      return res.status(400).json({ msg: "File or folder already exists" });
+    }
+
+    const newFile = {
+      fileName,
+      path: path || "/",
+      isFolder: isFolder || false,
+      language: isFolder ? undefined : language || "javascript",
+      code: isFolder ? undefined : "",
+    };
+
+    project.files.push(newFile);
+    await project.save();
+
+    res.json({ msg: "File/folder added", file: newFile });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+// Delete a file or folder from a project
+router.delete("/:id/file", auth, async (req, res) => {
+  const { fileName, path } = req.body;
+  try {
+    let project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ msg: "Project not found" });
+    }
+
+    const isOwner = project.user.toString() === req.user.id;
+    const isShared = project.sharedWith.some((id) => id.equals(req.user.id));
+
+    if (!isOwner && !isShared) {
+      return res
+        .status(401)
+        .json({ msg: "Not authorized to modify this project" });
+    }
+
+    if (project.readOnly) {
+      return res.status(403).json({ msg: "This project is read-only." });
+    }
+
+    const fileIndex = project.files.findIndex(
+      (f) => f.fileName === fileName && f.path === path,
+    );
+
+    if (fileIndex === -1) {
+      return res.status(404).json({ msg: "File or folder not found" });
+    }
+
+    const fileToDelete = project.files[fileIndex];
+
+    // If deleting a folder, also delete all files inside it
+    if (fileToDelete.isFolder) {
+      const folderPath = path === "/" ? `/${fileName}` : `${path}/${fileName}`;
+      project.files = project.files.filter(
+        (f) =>
+          !f.path.startsWith(folderPath) ||
+          (f.fileName === fileName && f.path === path),
+      );
+    }
+
+    project.files.splice(fileIndex, 1);
+    await project.save();
+
+    res.json({ msg: "File/folder deleted" });
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");

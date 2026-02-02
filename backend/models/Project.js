@@ -6,9 +6,20 @@ const FileSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  path: {
+    type: String,
+    default: "/",
+    trim: true,
+  },
+  isFolder: {
+    type: Boolean,
+    default: false,
+  },
   language: {
     type: String,
-    required: true,
+    required: function () {
+      return !this.isFolder;
+    },
   },
   code: {
     type: String,

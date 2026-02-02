@@ -53,8 +53,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("code-change", (data) => {
-    const { roomId, fileName, newCode } = data;
-    socket.to(roomId).emit("code-update", { fileName, newCode });
+    const { roomId, fileName, path, newCode } = data;
+    socket.to(roomId).emit("code-update", { fileName, path, newCode });
   });
 
   socket.on("send-chat-message", async (data) => {
@@ -74,7 +74,7 @@ io.on("connection", (socket) => {
     rooms.forEach((roomId) => {
       if (roomUsers[roomId]) {
         roomUsers[roomId] = roomUsers[roomId].filter(
-          (u) => u.socketId !== socket.id
+          (u) => u.socketId !== socket.id,
         );
         io.to(roomId).emit("update-user-list", roomUsers[roomId]);
       }
