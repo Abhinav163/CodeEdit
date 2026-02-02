@@ -162,17 +162,23 @@ const cppKeywords = [
 const defaultWebFiles = [
   {
     fileName: "index.html",
+    path: "/",
     language: "html",
+    isFolder: false,
     code: `<!DOCTYPE html>\n<html>\n<head>\n  <title>My Page</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>Hello, World!</h1>\n  <script src="script.js"></script>\n</body>\n</html>`,
   },
   {
     fileName: "style.css",
+    path: "/",
     language: "css",
+    isFolder: false,
     code: `body {\n  font-family: sans-serif;\n  background-color: #f0f0f0;\n}\n\nh1 {\n  color: #333;\n}`,
   },
   {
     fileName: "script.js",
+    path: "/",
     language: "javascript",
+    isFolder: false,
     code: `console.log("Hello from script.js!");\n\ndocument.querySelector('h1').textContent = 'Hello from JS!';`,
   },
 ];
@@ -202,7 +208,9 @@ const NewProjectChooser = ({ onSelect }) => {
     onSelect("code", [
       {
         fileName,
+        path: "/",
         language,
+        isFolder: false,
         code: boilerplateCode[language],
       },
     ]);
@@ -310,7 +318,11 @@ const Editor = () => {
   const toast = useToast();
 
   const activeFileObject = useMemo(() => {
-    return files.find((f) => f.fileName === activeFile);
+    return files.find((f) => {
+      const fullPath =
+        f.path === "/" ? `/${f.fileName}` : `${f.path}/${f.fileName}`;
+      return fullPath === activeFile;
+    });
   }, [files, activeFile]);
 
   const activeLanguage = useMemo(() => {
@@ -350,12 +362,19 @@ const Editor = () => {
         try {
           const res = await axios.get(
             `https://codeedit-backend.onrender.com/api/projects/${projectId}`,
-            { headers: { "x-auth-token": token } }
+            { headers: { "x-auth-token": token } },
           );
           isRemoteChange.current = true;
           setFiles(res.data.files);
           setProjectType(res.data.projectType);
-          setActiveFile(res.data.files[0].fileName);
+          const firstFile = res.data.files.find((f) => !f.isFolder);
+          if (firstFile) {
+            const fullPath =
+              firstFile.path === "/"
+                ? `/${firstFile.fileName}`
+                : `${firstFile.path}/${firstFile.fileName}`;
+            setActiveFile(fullPath);
+          }
           setIsReadOnly(res.data.readOnly);
           setChatMessages(res.data.chat || []);
         } catch (err) {
@@ -370,12 +389,14 @@ const Editor = () => {
       setFiles([]);
     }
 
-    socket.on("code-update", ({ fileName, newCode }) => {
+    socket.on("code-update", ({ fileName, path, newCode }) => {
       isRemoteChange.current = true;
       setFiles((prevFiles) =>
         prevFiles.map((file) =>
-          file.fileName === fileName ? { ...file, code: newCode } : file
-        )
+          file.fileName === fileName && file.path === path
+            ? { ...file, code: newCode }
+            : file,
+        ),
       );
     });
 
@@ -395,28 +416,34 @@ const Editor = () => {
   const srcDoc = useMemo(() => {
     if (projectType !== "web" || !files.length) return "";
 
-    const htmlFile = files.find((f) => f.fileName.match(/index\.html$/i));
+    const htmlFile = files.find(
+      (f) => !f.isFolder && f.fileName.match(/index\.html$/i),
+    );
     if (!htmlFile) return "<html><body>No index.html file found.</body></html>";
 
     let html = htmlFile.code;
-    const cssFiles = files.filter((f) => f.fileName.endsWith(".css"));
+    const cssFiles = files.filter(
+      (f) => !f.isFolder && f.fileName.endsWith(".css"),
+    );
     let css = "";
     for (const cssFile of cssFiles) {
       css += `<style type"text/css">${cssFile.code}</style>`;
       const re = new RegExp(
         `<link[^>]*href=["']${cssFile.fileName}["'][^>]*>`,
-        "i"
+        "i",
       );
       html = html.replace(re, "");
     }
 
-    const jsFiles = files.filter((f) => f.fileName.endsWith(".js"));
+    const jsFiles = files.filter(
+      (f) => !f.isFolder && f.fileName.endsWith(".js"),
+    );
     let js = "";
     for (const jsFile of jsFiles) {
       js += `<script>${jsFile.code}</script>`;
       const re = new RegExp(
         `<script[^>]*src=["']${jsFile.fileName}["'][^>]*></script>`,
-        "i"
+        "i",
       );
       html = html.replace(re, "");
     }
@@ -467,21 +494,26 @@ const Editor = () => {
   };
 
   const saveCode = useCallback(
-    debounce(async (fileName, newCode) => {
+    debounce(async (filePath, newCode) => {
       if (projectId) {
         const token = localStorage.getItem("token");
         try {
+          // Extract fileName and path from full path
+          const parts = filePath.split("/").filter(Boolean);
+          const fileName = parts.pop();
+          const path = parts.length > 0 ? `/${parts.join("/")}` : "/";
+
           await axios.put(
             `https://codeedit-backend.onrender.com/api/projects/${projectId}/file`,
             { fileName, newCode },
-            { headers: { "x-auth-token": token } }
+            { headers: { "x-auth-token": token } },
           );
         } catch (err) {
           console.error("Failed to save code:", err);
         }
       }
     }, 1000),
-    [projectId]
+    [projectId],
   );
 
   const onChange = useCallback(
@@ -492,22 +524,144 @@ const Editor = () => {
       }
 
       setFiles((prevFiles) =>
-        prevFiles.map((file) =>
-          file.fileName === activeFile ? { ...file, code: value } : file
-        )
+        prevFiles.map((file) => {
+          const fullPath =
+            file.path === "/"
+              ? `/${file.fileName}`
+              : `${file.path}/${file.fileName}`;
+          return fullPath === activeFile ? { ...file, code: value } : file;
+        }),
       );
 
-      if (socketRef.current && projectId) {
+      if (socketRef.current && projectId && activeFileObject) {
         socketRef.current.emit("code-change", {
           roomId: projectId,
-          fileName: activeFile,
+          fileName: activeFileObject.fileName,
+          path: activeFileObject.path,
           newCode: value,
         });
         saveCode(activeFile, value);
       }
     },
-    [projectId, saveCode, activeFile]
+    [projectId, saveCode, activeFile, activeFileObject],
   );
+
+  const handleAddFile = async (fileData) => {
+    if (!projectId) {
+      // Local project - just add to state
+      setFiles((prevFiles) => [
+        ...prevFiles,
+        {
+          ...fileData,
+          code: fileData.isFolder ? undefined : "",
+        },
+      ]);
+      toast({
+        title: "Success",
+        description: `${fileData.isFolder ? "Folder" : "File"} added locally`,
+        status: "success",
+        duration: 2000,
+      });
+      return;
+    }
+
+    // Saved project - save to backend
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.post(
+        `https://codeedit-backend.onrender.com/api/projects/${projectId}/file`,
+        fileData,
+        { headers: { "x-auth-token": token } },
+      );
+
+      setFiles((prevFiles) => [...prevFiles, res.data.file]);
+      toast({
+        title: "Success",
+        description: `${fileData.isFolder ? "Folder" : "File"} added`,
+        status: "success",
+        duration: 2000,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.msg || "Could not add file/folder",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
+
+  const handleDeleteFile = async (fileName, path) => {
+    if (!projectId) {
+      // Local project - just remove from state
+      setFiles((prevFiles) => {
+        const fileToDelete = prevFiles.find(
+          (f) => f.fileName === fileName && f.path === path,
+        );
+        if (fileToDelete?.isFolder) {
+          const folderPath =
+            path === "/" ? `/${fileName}` : `${path}/${fileName}`;
+          return prevFiles.filter(
+            (f) =>
+              !f.path.startsWith(folderPath) ||
+              (f.fileName === fileName && f.path === path),
+          );
+        }
+        return prevFiles.filter(
+          (f) => !(f.fileName === fileName && f.path === path),
+        );
+      });
+      toast({
+        title: "Deleted",
+        status: "info",
+        duration: 2000,
+      });
+      return;
+    }
+
+    // Saved project - delete from backend
+    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(
+        `https://codeedit-backend.onrender.com/api/projects/${projectId}/file`,
+        {
+          headers: { "x-auth-token": token },
+          data: { fileName, path },
+        },
+      );
+
+      setFiles((prevFiles) => {
+        const fileToDelete = prevFiles.find(
+          (f) => f.fileName === fileName && f.path === path,
+        );
+        if (fileToDelete?.isFolder) {
+          const folderPath =
+            path === "/" ? `/${fileName}` : `${path}/${fileName}`;
+          return prevFiles.filter(
+            (f) =>
+              !f.path.startsWith(folderPath) ||
+              (f.fileName === fileName && f.path === path),
+          );
+        }
+        return prevFiles.filter(
+          (f) => !(f.fileName === fileName && f.path === path),
+        );
+      });
+
+      toast({
+        title: "Deleted",
+        status: "info",
+        duration: 2000,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.msg || "Could not delete file/folder",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
 
   const handleRun = async () => {
     setIsLoading(true);
@@ -527,7 +681,7 @@ const Editor = () => {
       const response = await axios.post(
         "https://codeedit-backend.onrender.com/run",
         { language: activeLanguage, code: activeFileObject.code, input },
-        { headers: { "x-auth-token": token } }
+        { headers: { "x-auth-token": token } },
       );
       setOutput(response.data.output);
       const isError =
@@ -536,7 +690,7 @@ const Editor = () => {
       setStatus(isError ? "error" : "success");
     } catch (error) {
       setOutput(
-        error.response ? error.response.data.msg : "An error occurred."
+        error.response ? error.response.data.msg : "An error occurred.",
       );
       setStatus("error");
     }
@@ -556,7 +710,7 @@ const Editor = () => {
       const res = await axios.post(
         "https://codeedit-backend.onrender.com/api/projects",
         { title, files, projectType },
-        { headers: { "x-auth-token": token } }
+        { headers: { "x-auth-token": token } },
       );
       toast({
         title: "Success",
@@ -582,7 +736,14 @@ const Editor = () => {
   const handleNewProjectSelect = (type, initialFiles) => {
     setProjectType(type);
     setFiles(initialFiles);
-    setActiveFile(initialFiles[0].fileName);
+    const firstFile = initialFiles.find((f) => !f.isFolder);
+    if (firstFile) {
+      const fullPath =
+        firstFile.path === "/"
+          ? `/${firstFile.fileName}`
+          : `${firstFile.path}/${firstFile.fileName}`;
+      setActiveFile(fullPath);
+    }
   };
 
   const StatusTag = () => {
@@ -669,6 +830,9 @@ const Editor = () => {
                 files={files}
                 activeFile={activeFile}
                 onFileSelect={setActiveFile}
+                onAddFile={handleAddFile}
+                onDeleteFile={handleDeleteFile}
+                readOnly={isReadOnly}
               />
             </Panel>
             <PanelResizeHandle className="resize-handle" />

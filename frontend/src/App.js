@@ -28,7 +28,28 @@ import { jwtDecode } from "jwt-decode";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/login" />;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  try {
+    const decodedToken = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
+
+    if (decodedToken.exp < currentTime) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("lastActivity");
+      return <Navigate to="/login" replace />;
+    }
+
+    return children;
+  } catch (error) {
+    console.error("Invalid token:", error);
+    localStorage.removeItem("token");
+    localStorage.removeItem("lastActivity");
+    return <Navigate to="/login" replace />;
+  }
 };
 
 const Navbar = () => {
