@@ -7,6 +7,7 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import {
   Avatar,
   Box,
@@ -217,6 +218,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Box>
+      <Analytics />
     </>
   );
 }
